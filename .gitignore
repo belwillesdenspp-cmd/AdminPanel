@@ -1,0 +1,14 @@
+node_modules/
+dist/
+server/data/
+*.db
+*.db-*
+.env
+.DS_Store
+*.log
+client/dist/
+_apply_edits.py
+_chunks.txt
+_extract2.py
+_extract_transcript.py
+_reconstruct.py
