@@ -6,6 +6,9 @@ import { CatalogPage } from './pages/CatalogPage';
 import { AppFramePage } from './pages/AppFramePage';
 import { UsersAdminPage } from './pages/UsersAdminPage';
 import { AppsAdminPage } from './pages/AppsAdminPage';
+import { ExtrasPage } from './pages/ExtrasPage';
+import { IpScanPage } from './pages/IpScanPage';
+import { CardCheckPage } from './pages/CardCheckPage';
 
 export default function App() {
   return (
@@ -19,6 +22,9 @@ export default function App() {
         }
       >
         <Route index element={<CatalogPage />} />
+        <Route path="extras" element={<ExtrasPage />} />
+        <Route path="extras/ip-scan" element={<IpScanPage />} />
+        <Route path="extras/card-check" element={<CardCheckPage />} />
         <Route path="app/:appId" element={<AppFramePage />} />
         <Route
           path="admin/users"

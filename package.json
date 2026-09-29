@@ -5,7 +5,7 @@
   "description": "Единый шлюз приложений сектора технической поддержки",
   "scripts": {
     "install:all": "npm install && npm install --prefix server && npm install --prefix client",
-    "install:apps": "npm run install:all --prefix ../Instructions && npm run install:all --prefix \"../Учет ТМЦ\" && npm run install:all --prefix ../Torcy && npm run install:all --prefix ../GLPI && npm run install:all --prefix ../KnowledgeBase",
+    "install:apps": "npm run install:all --prefix ../Instructions && npm run install:all --prefix \"../Учет ТМЦ\" && npm run install:all --prefix ../Torcy && npm run install:all --prefix ../GLPI && npm run install:all --prefix ../EquipmentMove",
     "build": "npm run build --prefix client",
     "build:apps": "node scripts/build-apps.mjs",
     "dev": "concurrently -n server,client -c cyan,magenta \"npm run dev --prefix server\" \"npm run dev --prefix client\"",

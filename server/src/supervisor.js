@@ -2,6 +2,7 @@ import { spawn } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { listApps } from './db.js';
+import { reclaimPort } from './portGuard.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, '..', '..');
@@ -10,6 +11,7 @@ const rootDir = path.join(__dirname, '..', '..');
 const children = new Map();
 
 const SUPERVISOR_ENABLED = process.env.SUPERVISOR !== '0';
+let stoppingAll = false;
 
 function resolveCwd(cwd) {
   return path.isAbsolute(cwd) ? cwd : path.resolve(rootDir, cwd);
@@ -18,6 +20,10 @@ function resolveCwd(cwd) {
 function appendLog(entry, line) {
   entry.logs.push(line);
   if (entry.logs.length > 200) entry.logs.shift();
+}
+
+function lastLogsMentionAddrInUse(entry) {
+  return (entry?.logs || []).slice(-12).some((line) => /EADDRINUSE/i.test(line));
 }
 
 export function getRuntimeStatus(appId) {
@@ -50,7 +56,17 @@ export async function getAppHealth(app) {
   }
 }
 
-export function startApp(app) {
+function childEnv(app) {
+  const env = { ...process.env };
+  delete env.PORT;
+  delete env.ADMIN_PORT;
+  env.HOST = app.internalHost;
+  env.PORT = String(app.internalPort);
+  env.BASE_PATH = app.publicPath;
+  return env;
+}
+
+export async function startApp(app) {
   if (!SUPERVISOR_ENABLED) {
     console.log(`[supervisor] skipped (SUPERVISOR=0): ${app.id}`);
     return;
@@ -59,6 +75,7 @@ export function startApp(app) {
     console.log(`[supervisor] disabled in config: ${app.id}`);
     return;
   }
+  if (stoppingAll) return;
 
   const existing = children.get(app.id);
   if (existing && existing.proc.exitCode === null && !existing.proc.killed) {
@@ -66,19 +83,14 @@ export function startApp(app) {
     return;
   }
 
-  const cwd = resolveCwd(app.cwd);
-  const env = {
-    ...process.env,
-    HOST: app.internalHost,
-    PORT: String(app.internalPort),
-    BASE_PATH: app.publicPath,
-  };
+  await reclaimPort(app.internalPort);
 
-  console.log(`[supervisor] starting ${app.id}: ${app.command} ${app.args.join(' ')} (cwd=${cwd})`);
+  const cwd = resolveCwd(app.cwd);
+  console.log(`[supervisor] starting ${app.id}: ${app.command} ${app.args.join(' ')} (cwd=${cwd} port=${app.internalPort})`);
 
   const proc = spawn(app.command, app.args, {
     cwd,
-    env,
+    env: childEnv(app),
     shell: true,
     windowsHide: true,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -109,6 +121,13 @@ export function startApp(app) {
   proc.on('exit', (code, signal) => {
     entry.exitCode = code;
     console.log(`[supervisor] ${app.id} exited code=${code} signal=${signal}`);
+    if (stoppingAll || !SUPERVISOR_ENABLED || !app.enabled) return;
+    const delay = lastLogsMentionAddrInUse(entry) ? 800 : 2500;
+    console.log(`[supervisor] restarting ${app.id} in ${delay}ms`);
+    setTimeout(() => {
+      if (stoppingAll) return;
+      void startApp(app);
+    }, delay);
   });
   proc.on('error', (err) => {
     appendLog(entry, `spawn error: ${err.message}`);
@@ -116,10 +135,20 @@ export function startApp(app) {
   });
 }
 
-export function startAllApps() {
+export async function startAllApps() {
+  stoppingAll = false;
   const apps = listApps({ enabledOnly: true });
+  if (!SUPERVISOR_ENABLED) {
+    for (const app of apps) {
+      console.log(`[supervisor] skipped (SUPERVISOR=0): ${app.id}`);
+    }
+    return;
+  }
   for (const app of apps) {
-    startApp(app);
+    await reclaimPort(app.internalPort);
+  }
+  for (const app of apps) {
+    void startApp(app);
   }
 }
 
@@ -145,6 +174,7 @@ function killProcessTree(pid) {
 }
 
 export function stopAllApps() {
+  stoppingAll = true;
   for (const [id, entry] of children.entries()) {
     if (entry.proc.exitCode === null && !entry.proc.killed) {
       console.log(`[supervisor] stopping ${id} (pid=${entry.proc.pid})`);

@@ -5,9 +5,10 @@ import { useAuth } from '../auth';
 import type { AppInfo } from '../types';
 
 const EXTERNAL_PROTOCOL_RE = /^(vnc|ssh|rdp|telnet):\/\//i;
+const FOLDER_PROTOCOL_RE = /^adminpanel-folder:/i;
 
 function launchExternalProtocol(url: string) {
-  if (!EXTERNAL_PROTOCOL_RE.test(url)) return;
+  if (!EXTERNAL_PROTOCOL_RE.test(url) && !FOLDER_PROTOCOL_RE.test(url)) return;
   const a = document.createElement('a');
   a.href = url;
   a.style.display = 'none';

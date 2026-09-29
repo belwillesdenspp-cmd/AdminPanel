@@ -1,8 +1,8 @@
 [
   {
     "id": "instructions",
-    "title": "Инструкции",
-    "description": "База знаний инструкций по сервис-запросам",
+    "title": "База знаний",
+    "description": "Инструкции по сервис-запросам",
     "cwd": "../Instructions",
     "command": "npm",
     "args": ["start"],
@@ -84,15 +84,15 @@
     "enabled": true
   },
   {
-    "id": "kb",
-    "title": "База знаний",
-    "description": "Типовые заявки УИТ, сектора и варианты решений",
-    "cwd": "../KnowledgeBase",
+    "id": "equipment",
+    "title": "Перемещение оборудования",
+    "description": "Учёт передачи техники между магазинами и офисом",
+    "cwd": "../EquipmentMove",
     "command": "npm",
     "args": ["start"],
     "internalHost": "127.0.0.1",
     "internalPort": 3006,
-    "publicPath": "/apps/kb",
+    "publicPath": "/apps/equipment",
     "healthPath": "/api/health",
     "sortOrder": 70,
     "enabled": true

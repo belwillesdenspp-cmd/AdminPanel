@@ -25,8 +25,11 @@ function gatewaySecretFor(appId) {
   if (appId === 'glpi') {
     return process.env.GLPI_GATEWAY_SECRET || 'glpi-gateway-dev-secret-change-me';
   }
-  if (appId === 'kb') {
-    return process.env.KB_GATEWAY_SECRET || 'kb-gateway-dev-secret-change-me';
+  if (appId === 'equipment') {
+    return (
+      process.env.EQUIPMENT_GATEWAY_SECRET ||
+      'equipment-gateway-dev-secret-change-me'
+    );
   }
   return process.env.ADMIN_GATEWAY_SECRET || '';
 }
@@ -37,7 +40,7 @@ function gatewaySecretHeaderName(appId) {
   if (appId === 'tmc') return 'X-Tmc-Gateway-Secret';
   if (appId === 'citrix') return 'X-Citrix-Gateway-Secret';
   if (appId === 'glpi') return 'X-Glpi-Gateway-Secret';
-  if (appId === 'kb') return 'X-Kb-Gateway-Secret';
+  if (appId === 'equipment') return 'X-Equipment-Gateway-Secret';
   return 'X-Admin-Gateway-Secret';
 }
 

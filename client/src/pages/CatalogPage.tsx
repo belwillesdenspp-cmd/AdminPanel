@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { AppMenuIcon } from '../appIcons';
 import { useAuth } from '../auth';
 
 export function CatalogPage() {
@@ -17,24 +18,34 @@ export function CatalogPage() {
 
       <div className="panel stack">
         {enabled.length === 0 ? (
-          <p className="muted">
-            Нет доступных приложений. Обратитесь к администратору для назначения прав.
+          <p className="muted" style={{ margin: 0 }}>
+            Нет назначенных приложений. Утилиты из «Доп. ПО» доступны всем
+            сотрудникам. Остальные доступы выдаёт администратор.
           </p>
         ) : (
-          <>
-            <p className="muted" style={{ margin: 0 }}>
-              Доступно приложений: {enabled.length}. Быстрый переход:
-            </p>
-            <div className="home-app-list">
-              {enabled.map((app) => (
-                <Link key={app.id} className="home-app-chip" to={`/app/${app.id}`}>
-                  <strong>{app.title}</strong>
-                  <span>{app.description || 'Открыть'}</span>
-                </Link>
-              ))}
-            </div>
-          </>
+          <p className="muted" style={{ margin: 0 }}>
+            Доступно приложений: {enabled.length}. Быстрый переход:
+          </p>
         )}
+        <div className="home-app-list">
+          <Link className="home-app-chip" to="/extras">
+            <strong>Доп. ПО</strong>
+            <span>Утилиты и небольшие программы сектора ТП</span>
+          </Link>
+          {enabled.map((app) => (
+            <Link key={app.id} className="home-app-chip" to={`/app/${app.id}`}>
+              <span className="home-app-chip-head">
+                <AppMenuIcon
+                  icon={app.icon || app.id}
+                  iconUrl={app.iconUrl}
+                  title={app.title}
+                />
+                <strong>{app.title}</strong>
+              </span>
+              <span>{app.description || 'Открыть'}</span>
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );

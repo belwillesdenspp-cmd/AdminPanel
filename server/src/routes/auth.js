@@ -54,6 +54,10 @@ router.get('/me', requireAuth, (req, res) => {
       description: a.description,
       publicPath: a.publicPath,
       enabled: a.enabled,
+      icon: a.icon,
+      iconUrl: a.iconUrl,
+      sortOrder: a.sortOrder,
+      pinned: Boolean(a.pinned),
     })),
   });
 });

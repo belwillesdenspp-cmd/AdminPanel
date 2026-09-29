@@ -6,6 +6,7 @@ server/data/
 .env
 .DS_Store
 *.log
+cookies.txt
 client/dist/
 _apply_edits.py
 _chunks.txt

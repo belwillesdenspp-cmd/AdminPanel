@@ -11,15 +11,17 @@ import { attachAppProxyUpgrades, mountAppProxies } from './proxy.js';
 import authRouter from './routes/auth.js';
 import usersRouter from './routes/users.js';
 import appsRouter from './routes/apps.js';
+import toolsRouter from './routes/tools.js';
 import { startAllApps, stopAllApps } from './supervisor.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
-// Use ADMIN_PORT only — a leftover PORT=3004 from child apps must not bind the gateway.
+// Use ADMIN_PORT only — never inherit a child's PORT (3003/3004/…) onto the gateway.
 const PORT = Number(process.env.ADMIN_PORT) || 4000;
 const HOST = process.env.HOST || '0.0.0.0';
+delete process.env.PORT;
 
 const app = express();
 
@@ -45,6 +47,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/apps', appsRouter);
+app.use('/api/tools', toolsRouter);
 
 const apps = listApps();
 const appProxies = mountAppProxies(app, apps);
@@ -66,7 +69,18 @@ app.use((err, _req, res, _next) => {
 
 const server = app.listen(PORT, HOST, () => {
   console.log(`[admin] Gateway listening on http://${HOST}:${PORT}`);
-  startAllApps();
+  void startAllApps();
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(
+      `[admin] Порт ${PORT} уже занят. Закройте другой процесс AdminPanel или задайте ADMIN_PORT.`,
+    );
+    process.exit(1);
+  }
+  console.error('[admin] listen error:', err);
+  process.exit(1);
 });
 
 attachAppProxyUpgrades(server, appProxies);

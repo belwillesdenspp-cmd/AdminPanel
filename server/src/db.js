@@ -3,14 +3,19 @@ import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { isAllowedAppIcon } from './appIcons.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = path.join(__dirname, '..', 'data');
 const dbPath = path.join(dataDir, 'admin.db');
 const appsConfigPath = path.join(__dirname, '..', '..', 'config', 'apps.json');
+const appIconsDir = path.join(dataDir, 'app-icons');
 
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
+}
+if (!fs.existsSync(appIconsDir)) {
+  fs.mkdirSync(appIconsDir, { recursive: true });
 }
 
 const db = new Database(dbPath);
@@ -51,7 +56,79 @@ db.exec(`
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (app_id) REFERENCES apps(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS user_app_prefs (
+    user_id INTEGER NOT NULL,
+    app_id TEXT NOT NULL,
+    pinned INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, app_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (app_id) REFERENCES apps(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS user_fusion_credentials (
+    user_id INTEGER NOT NULL,
+    source TEXT NOT NULL CHECK (source IN ('bmk', 'bvd')),
+    cipher TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (user_id, source),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS ui_prefs (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
 `);
+
+function ensureColumn(table, name, ddl) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!cols.some((col) => col.name === name)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+  }
+}
+
+ensureColumn('apps', 'icon', "icon TEXT NOT NULL DEFAULT ''");
+ensureColumn('apps', 'icon_ext', "icon_ext TEXT NOT NULL DEFAULT ''");
+ensureColumn('apps', 'icon_updated', 'icon_updated INTEGER NOT NULL DEFAULT 0');
+
+const NOTIFY_DEFAULTS = {
+  position: 'top-center',
+  opacity: 0.92,
+  hideSec: 20,
+};
+
+export function getNotifyPrefs() {
+  const row = db.prepare(`SELECT value FROM ui_prefs WHERE key = 'notifications'`).get();
+  if (!row?.value) return { ...NOTIFY_DEFAULTS };
+  try {
+    const parsed = JSON.parse(row.value);
+    const position = ['top-center', 'top-right', 'bottom-right'].includes(parsed.position)
+      ? parsed.position
+      : NOTIFY_DEFAULTS.position;
+    const opacity = Math.min(1, Math.max(0.55, Number(parsed.opacity) || NOTIFY_DEFAULTS.opacity));
+    const hideSec = Math.min(120, Math.max(5, Number(parsed.hideSec) || NOTIFY_DEFAULTS.hideSec));
+    return { position, opacity, hideSec };
+  } catch {
+    return { ...NOTIFY_DEFAULTS };
+  }
+}
+
+export function saveNotifyPrefs(patch = {}) {
+  const next = { ...getNotifyPrefs(), ...patch };
+  const clean = getNotifyPrefs();
+  const position = ['top-center', 'top-right', 'bottom-right'].includes(next.position)
+    ? next.position
+    : clean.position;
+  const opacity = Math.min(1, Math.max(0.55, Number(next.opacity) || clean.opacity));
+  const hideSec = Math.min(120, Math.max(5, Math.round(Number(next.hideSec) || clean.hideSec)));
+  const value = JSON.stringify({ position, opacity, hideSec });
+  db.prepare(
+    `INSERT INTO ui_prefs (key, value) VALUES ('notifications', ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+  ).run(value);
+  return { position, opacity, hideSec };
+}
 
 function syncAppsFromConfig() {
   if (!fs.existsSync(appsConfigPath)) {
@@ -63,26 +140,23 @@ function syncAppsFromConfig() {
   const upsert = db.prepare(`
     INSERT INTO apps (
       id, title, description, public_path, internal_host, internal_port,
-      health_path, cwd, command, args_json, sort_order, enabled
+      health_path, cwd, command, args_json, sort_order, enabled, icon
     ) VALUES (
       @id, @title, @description, @publicPath, @internalHost, @internalPort,
-      @healthPath, @cwd, @command, @argsJson, @sortOrder, @enabled
+      @healthPath, @cwd, @command, @argsJson, @sortOrder, @enabled, @icon
     )
     ON CONFLICT(id) DO UPDATE SET
-      title = excluded.title,
-      description = excluded.description,
       public_path = excluded.public_path,
       internal_host = excluded.internal_host,
       internal_port = excluded.internal_port,
       health_path = excluded.health_path,
       cwd = excluded.cwd,
       command = excluded.command,
-      args_json = excluded.args_json,
-      sort_order = excluded.sort_order,
-      enabled = excluded.enabled
+      args_json = excluded.args_json
   `);
 
   const tx = db.transaction((list) => {
+    const keep = new Set(list.map((app) => app.id));
     for (const app of list) {
       upsert.run({
         id: app.id,
@@ -97,11 +171,19 @@ function syncAppsFromConfig() {
         argsJson: JSON.stringify(app.args || ['start']),
         sortOrder: app.sortOrder ?? 100,
         enabled: app.enabled === false ? 0 : 1,
+        icon: isAllowedAppIcon(app.icon) ? app.icon : app.id,
       });
+    }
+    const stale = db.prepare('SELECT id FROM apps').all().filter((row) => !keep.has(row.id));
+    const remove = db.prepare('DELETE FROM apps WHERE id = ?');
+    for (const row of stale) {
+      remove.run(row.id);
+      console.log(`[db] удалено приложение из каталога: ${row.id}`);
     }
   });
 
   tx(apps);
+  db.prepare(`UPDATE apps SET icon = id WHERE icon = ''`).run();
 }
 
 function seedAdmin() {
@@ -140,6 +222,169 @@ export function setAppEnabled(id, enabled) {
   return getApp(id);
 }
 
+export function updateApp(id, patch) {
+  const current = getApp(id);
+  if (!current) return null;
+
+  const title =
+    patch.title !== undefined ? String(patch.title).trim() : current.title;
+  const description =
+    patch.description !== undefined
+      ? String(patch.description).trim()
+      : current.description;
+  let icon = current.icon;
+  if (patch.icon !== undefined) {
+    const next = String(patch.icon || '').trim();
+    icon = isAllowedAppIcon(next) ? next : current.id;
+  }
+  const sortOrder =
+    patch.sortOrder !== undefined
+      ? Math.max(0, Math.min(9999, Number(patch.sortOrder) || 0))
+      : current.sortOrder;
+  const enabled =
+    patch.enabled === undefined ? (current.enabled ? 1 : 0) : patch.enabled ? 1 : 0;
+
+  if (!title) {
+    const err = new Error('Укажите название');
+    err.status = 400;
+    throw err;
+  }
+  if (title.length > 80) {
+    const err = new Error('Название слишком длинное');
+    err.status = 400;
+    throw err;
+  }
+  if (description.length > 240) {
+    const err = new Error('Описание слишком длинное');
+    err.status = 400;
+    throw err;
+  }
+
+  db.prepare(
+    `UPDATE apps
+     SET title = ?, description = ?, icon = ?, sort_order = ?, enabled = ?
+     WHERE id = ?`,
+  ).run(title, description, icon, sortOrder, enabled, id);
+  return getApp(id);
+}
+
+export function readAppsCatalog() {
+  if (!fs.existsSync(appsConfigPath)) return [];
+  return JSON.parse(fs.readFileSync(appsConfigPath, 'utf8'));
+}
+
+export function restoreAppAppearance(id) {
+  const catalog = readAppsCatalog();
+  const def = catalog.find((app) => app.id === id);
+  if (!def) {
+    const err = new Error('В каталоге нет исходных значений');
+    err.status = 404;
+    throw err;
+  }
+  clearAppIconFile(id);
+  db.prepare(
+    `UPDATE apps
+     SET title = ?, description = ?, icon = ?, icon_ext = '', icon_updated = 0
+     WHERE id = ?`,
+  ).run(def.title, def.description || '', isAllowedAppIcon(def.icon) ? def.icon : def.id, id);
+  return getApp(id);
+}
+
+const ICON_EXT_BY_MIME = {
+  'image/png': '.png',
+  'image/jpeg': '.jpg',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
+};
+
+export function saveAppIconFromDataUrl(id, dataUrl) {
+  const match = String(dataUrl || '').match(
+    /^data:(image\/(?:png|jpeg|webp|gif));base64,([A-Za-z0-9+/=\s]+)$/,
+  );
+  if (!match) {
+    const err = new Error('Загрузите PNG, JPEG, WebP или GIF');
+    err.status = 400;
+    throw err;
+  }
+  const mime = match[1];
+  const buf = Buffer.from(match[2].replace(/\s+/g, ''), 'base64');
+  if (!buf.length || buf.length > 400 * 1024) {
+    const err = new Error('Файл значка больше 400 КБ');
+    err.status = 400;
+    throw err;
+  }
+  const ext = ICON_EXT_BY_MIME[mime];
+  if (!ext) {
+    const err = new Error('Неподдерживаемый формат значка');
+    err.status = 400;
+    throw err;
+  }
+  clearAppIconFile(id);
+  fs.writeFileSync(path.join(appIconsDir, `${id}${ext}`), buf);
+  db.prepare(
+    `UPDATE apps SET icon_ext = ?, icon_updated = ? WHERE id = ?`,
+  ).run(ext, Date.now(), id);
+  return getApp(id);
+}
+
+export function clearAppIconFile(id) {
+  const row = db.prepare('SELECT icon_ext FROM apps WHERE id = ?').get(id);
+  if (row?.icon_ext) {
+    const filePath = path.join(appIconsDir, `${id}${row.icon_ext}`);
+    try {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    } catch {
+      // ignore
+    }
+  }
+  db.prepare(`UPDATE apps SET icon_ext = '', icon_updated = 0 WHERE id = ?`).run(id);
+  return getApp(id);
+}
+
+export function getAppIconFile(id) {
+  const row = db.prepare('SELECT icon_ext FROM apps WHERE id = ?').get(id);
+  if (!row?.icon_ext) return null;
+  const filePath = path.join(appIconsDir, `${id}${row.icon_ext}`);
+  if (!fs.existsSync(filePath)) return null;
+  return { filePath, ext: row.icon_ext };
+}
+
+export function swapAppSort(id, direction) {
+  const apps = listApps();
+  const index = apps.findIndex((app) => app.id === id);
+  if (index < 0) return null;
+  const otherIndex = direction === 'up' ? index - 1 : index + 1;
+  if (otherIndex < 0 || otherIndex >= apps.length) return getApp(id);
+  const reordered = apps.slice();
+  const [item] = reordered.splice(index, 1);
+  reordered.splice(otherIndex, 0, item);
+  const tx = db.transaction(() => {
+    reordered.forEach((app, i) => {
+      db.prepare('UPDATE apps SET sort_order = ? WHERE id = ?').run((i + 1) * 10, app.id);
+    });
+  });
+  tx();
+  return getApp(id);
+}
+
+export function getUserAppPrefsMap(userId) {
+  const rows = db
+    .prepare('SELECT app_id, pinned FROM user_app_prefs WHERE user_id = ?')
+    .all(userId);
+  const map = new Map();
+  for (const row of rows) map.set(row.app_id, { pinned: Boolean(row.pinned) });
+  return map;
+}
+
+export function setUserAppPinned(userId, appId, pinned) {
+  db.prepare(
+    `INSERT INTO user_app_prefs (user_id, app_id, pinned)
+     VALUES (?, ?, ?)
+     ON CONFLICT(user_id, app_id) DO UPDATE SET pinned = excluded.pinned`,
+  ).run(userId, appId, pinned ? 1 : 0);
+  return { pinned: Boolean(pinned) };
+}
+
 function mapApp(row) {
   return {
     id: row.id,
@@ -154,6 +399,10 @@ function mapApp(row) {
     args: JSON.parse(row.args_json || '["start"]'),
     sortOrder: row.sort_order,
     enabled: Boolean(row.enabled),
+    icon: row.icon || row.id,
+    iconUrl: row.icon_ext
+      ? `/api/apps/${row.id}/icon?v=${row.icon_updated || 0}`
+      : null,
   };
 }
 
@@ -275,9 +524,46 @@ export function userHasAppAccess(user, appId) {
 export function appsForUser(user) {
   // Include disabled apps so the catalog can show them as inactive.
   const apps = listApps({ enabledOnly: false });
-  if (user.role === 'admin') return apps;
-  const allowed = new Set(getUserAppIds(user.id));
-  return apps.filter((a) => allowed.has(a.id));
+  const allowed =
+    user.role === 'admin' ? null : new Set(getUserAppIds(user.id));
+  const visible = allowed ? apps.filter((a) => allowed.has(a.id)) : apps;
+  const prefs = getUserAppPrefsMap(user.id);
+  return visible
+    .map((app) => ({
+      ...app,
+      pinned: Boolean(prefs.get(app.id)?.pinned),
+    }))
+    .sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+      if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+      return String(a.title).localeCompare(String(b.title), 'ru');
+    });
+}
+
+export function getFusionCredentialCipher(userId, source) {
+  const row = db
+    .prepare(
+      'SELECT cipher FROM user_fusion_credentials WHERE user_id = ? AND source = ?',
+    )
+    .get(Number(userId), source);
+  return row?.cipher || null;
+}
+
+export function upsertFusionCredentialCipher(userId, source, cipher) {
+  db.prepare(
+    `INSERT INTO user_fusion_credentials (user_id, source, cipher, updated_at)
+     VALUES (?, ?, ?, datetime('now'))
+     ON CONFLICT(user_id, source) DO UPDATE SET
+       cipher = excluded.cipher,
+       updated_at = datetime('now')`,
+  ).run(Number(userId), source, cipher);
+}
+
+export function deleteFusionCredentialCipher(userId, source) {
+  const info = db
+    .prepare('DELETE FROM user_fusion_credentials WHERE user_id = ? AND source = ?')
+    .run(Number(userId), source);
+  return info.changes > 0;
 }
 
 export function verifyPassword(user, password) {

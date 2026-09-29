@@ -1,0 +1,14 @@
+---
+description: Prefer icons on action buttons when the meaning is clear
+alwaysApply: true
+---
+
+# Icon buttons
+
+When adding or changing UI action buttons, prefer an icon over a text label if the action is standard and the meaning stays obvious.
+
+Use icons for: copy, download, open in new tab, close, search, settings, refresh, delete, edit, back.
+
+Keep a short text label when the action is not obvious from an icon alone (primary submit, apply, confirm, navigate to a named place). Icon + short word is fine.
+
+Icon-only buttons must have `title` and `aria-label` in Russian. Reuse existing SVG icons in the app; do not add a new icon library unless needed.
