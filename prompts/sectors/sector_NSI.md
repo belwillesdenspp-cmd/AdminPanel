@@ -357,6 +357,9 @@
 | **Настроить сканер на почту** (МФУ, scan-to-mail) | **СПП** | Не НСИ; [552165](https://support.willesden.by/front/ticket.form.php?id=552165) |
 | **Разместить баннер/изображение на экране КСО** | **САКПО** | Не НСИ, не интернет-продажи; [552171](https://support.willesden.by/front/ticket.form.php?id=552171) |
 | **«Пришлите логин/пароль Fusion/1С»** (активация) | **СПП** (уточнить) | Новый доступ → **СРИСиС**+сеть, **не САПО**; [552214](https://support.willesden.by/front/ticket.form.php?id=552214) |
+| **Исправление ЕУ (естественная убыль) в карточке товара** | **НСИ** | Запрос в НСИ; [553666](https://support.willesden.by/front/ticket.form.php?id=553666) |
+| **Lotus: добавить в почтовую рассылку** | **САПО** | Не НСИ, не СПП; [552473](https://support.willesden.by/front/ticket.form.php?id=552473) |
+| **Папки картинок торцевых мониторов** | **СПП** | Не НСИ; «Торцы»; [552639](https://support.willesden.by/front/ticket.form.php?id=552639) |
 | «**Отписать**» / возврат брака; OCR **«Возврат запрещен»** на скрине LSF | **НСИ** | **Не СРИСиС**, даже если контекст WMS/заказ; [551673](https://support.willesden.by/front/ticket.form.php?id=551673) |
 
 ---
