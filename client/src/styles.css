@@ -900,6 +900,60 @@ th {
 .apps-notify-bar {
   display: flex;
   justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.favicon-modal {
+  width: min(480px, 100%);
+  max-height: min(92vh, 720px);
+  overflow: auto;
+}
+.favicon-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.favicon-preview {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f4f7f6;
+}
+.favicon-row__text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-weight: 600;
+}
+.favicon-name {
+  font-weight: 500;
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.favicon-hint {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+.favicon-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.favicon-modal .modal-actions {
+  flex-wrap: wrap;
+}
+.favicon-modal .modal-actions .btn:first-child {
+  margin-right: auto;
 }
 .shell-alerts {
   position: fixed;

@@ -8,10 +8,12 @@ import { fileURLToPath } from 'url';
 import { listApps } from './db.js';
 import { attachUser } from './middleware.js';
 import { attachAppProxyUpgrades, mountAppProxies } from './proxy.js';
+import { sendBrandFile, sendFaviconIco } from './favicon.js';
 import authRouter from './routes/auth.js';
 import usersRouter from './routes/users.js';
 import appsRouter from './routes/apps.js';
 import toolsRouter from './routes/tools.js';
+import brandRouter from './routes/brand.js';
 import { startAllApps, stopAllApps } from './supervisor.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -38,6 +40,9 @@ app.use(
 );
 app.use(cookieParser());
 app.use(attachUser);
+app.get('/favicon.ico', sendFaviconIco);
+app.get('/brand/:file', sendBrandFile);
+app.use('/api/brand', brandRouter);
 app.use('/api', express.json({ limit: '1mb' }));
 
 app.get('/api/health', (_req, res) => {

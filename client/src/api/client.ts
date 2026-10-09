@@ -239,4 +239,22 @@ export const api = {
       body: JSON.stringify(body),
     });
   },
+  faviconState() {
+    return request<import('../favicon').FaviconState>('/api/brand/favicon');
+  },
+  saveFavicon(body: {
+    iconDataUrl?: string;
+    iconName?: string;
+    darkDataUrl?: string;
+    darkName?: string;
+    clearDark?: boolean;
+  }) {
+    return request<import('../favicon').FaviconState>('/api/brand/favicon', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  resetFavicon() {
+    return request<import('../favicon').FaviconState>('/api/brand/favicon', { method: 'DELETE' });
+  },
 };
