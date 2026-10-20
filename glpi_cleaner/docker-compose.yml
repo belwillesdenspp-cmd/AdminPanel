@@ -1,0 +1,12 @@
+services:
+  glpi-cleaner:
+    build: .
+    container_name: glpi-cleaner
+    restart: unless-stopped
+    volumes:
+      # Конфиг и логи на хосте — можно править без пересборки образа
+      - ./config.json:/app/config.json
+      - ./logs:/app/logs
+    # Разовый прогон вместо демона:
+    # command: ["python", "cli.py", "--once"]
+    command: ["python", "cli.py", "--daemon"]

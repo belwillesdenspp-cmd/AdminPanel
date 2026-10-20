@@ -1,0 +1,24 @@
+[Unit]
+Description=GLPI Cleaner — удаление устаревших заявок
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=glpi-cleaner
+Group=glpi-cleaner
+WorkingDirectory=/opt/glpi-cleaner
+ExecStart=/opt/glpi-cleaner/glpi-cleaner-cli --daemon
+Restart=on-failure
+RestartSec=30
+# Graceful stop
+KillSignal=SIGTERM
+TimeoutStopSec=60
+
+# Ограничения (по желанию)
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/glpi-cleaner/logs /opt/glpi-cleaner
+
+[Install]
+WantedBy=multi-user.target

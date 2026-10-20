@@ -1,0 +1,34 @@
+{
+  "glpi": {
+    "url": "https://support.willesden.by/apirest.php",
+    "app_token": "",
+    "user_token": "",
+    "verify_ssl": true,
+    "timeout": 120
+  },
+  "deletion": {
+    "max_age_value": 1,
+    "max_age_unit": "years",
+    "date_field": "date",
+    "statuses": [5, 6],
+    "category_ids": [],
+    "requester_ids": [],
+    "force_purge": false,
+    "dry_run": true,
+    "batch_size": 50,
+    "page_size": 1000
+  },
+  "schedule": {
+    "enabled": false,
+    "mode": "daily",
+    "time": "00:00",
+    "interval_hours": 24,
+    "day_of_week": "mon",
+    "day_of_month": 1
+  },
+  "logging": {
+    "level": "INFO",
+    "max_bytes": 5000000,
+    "backup_count": 5
+  }
+}
