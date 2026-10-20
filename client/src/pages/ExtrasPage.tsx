@@ -15,6 +15,12 @@ const TOOLS = [
       'По выбранной базе Fusion (БМК или БВД) смотрит признаки «введена / обработана / заблокирована» и говорит, куда назначать: НСИ или ценообразование.',
     path: '/extras/card-check',
   },
+  {
+    id: 'barcode-monitor',
+    title: 'Мониторинг остатка ШК',
+    description: 'Свободные штрихкоды стикеров уценки в базах БВД и БМК.',
+    path: '/extras/barcode-monitor',
+  },
 ];
 
 export function ExtrasPage() {

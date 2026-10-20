@@ -1268,8 +1268,255 @@ th {
   line-height: 1.35;
 }
 
+.barcode-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin: 0 0 1rem;
+}
+
+.barcode-toolbar .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.barcode-updated {
+  color: #f5f1e8;
+  font-size: 14px;
+}
+
+.barcode-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 10px;
+  background: #f4f7f5;
+  color: #132028;
+}
+
+.barcode-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 14px;
+  font-weight: 500;
+  color: #132028;
+}
+
+.barcode-legend i {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: #b42318;
+}
+
+.barcode-notice {
+  margin-bottom: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  background: #e8f5e9;
+  color: #132028;
+}
+
+.barcode-board {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.barcode-col {
+  background: #fff;
+  border: 1px solid #d5dee2;
+  border-left-width: 8px;
+  border-radius: 12px;
+  padding: 16px;
+  color: #132028;
+}
+
+.barcode-col h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: -16px -16px 0.8rem;
+  padding: 12px 16px;
+  border-radius: 8px 12px 0 0;
+  font-size: 18px;
+  color: #132028;
+}
+
+.barcode-col h2 i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.barcode-cards {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.barcode-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: #f4f7f5;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+}
+
+.barcode-nominal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.barcode-nominal-value {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #132028;
+}
+
+.barcode-nominal-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #3d5560;
+}
+
+.barcode-free {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: #132028;
+  text-align: right;
+}
+
+.barcode-free.is-low {
+  color: #b42318;
+}
+
+.barcode-empty {
+  margin-top: 0.15rem;
+  font-size: 13px;
+  font-weight: 400;
+  color: #3d5560;
+}
+
+.barcode-settings {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.barcode-settings h2 {
+  margin: 0;
+  font-family: var(--display);
+  color: var(--ink);
+}
+
+.barcode-settings-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.barcode-colors {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.barcode-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.barcode-settings fieldset {
+  margin: 0;
+  border: 1px solid rgba(19, 32, 40, 0.12);
+  border-radius: 16px;
+  background: #fff;
+  padding: 0.9rem 1rem 1rem;
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.barcode-settings fieldset.is-bvd {
+  border-top: 3px solid #e37b0a;
+}
+
+.barcode-settings fieldset.is-bmk {
+  border-top: 3px solid #2e7d32;
+}
+
+.barcode-settings legend {
+  padding: 0 0.35rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.barcode-settings label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.barcode-settings input:not([type='checkbox']):not([type='color']) {
+  width: 100%;
+  border: 1px solid rgba(19, 32, 40, 0.12);
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 500;
+}
+
+.barcode-settings input:focus {
+  outline: 2px solid rgba(15, 122, 107, 0.35);
+  border-color: var(--accent);
+}
+
+.barcode-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+}
+
+.barcode-checks label,
+.barcode-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.barcode-settings input[type='color'] {
+  width: 3rem;
+  height: 2.4rem;
+  padding: 0.15rem;
+  border: 1px solid rgba(19, 32, 40, 0.12);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.barcode-settings .btn {
+  justify-self: start;
+}
+
 @media (max-width: 820px) {
-  .ip-scan-form {
+  .ip-scan-form,
+  .barcode-board,
+  .barcode-settings-grid,
+  .barcode-settings-split {
     grid-template-columns: 1fr;
   }
 }

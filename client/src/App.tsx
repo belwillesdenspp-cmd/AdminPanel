@@ -9,6 +9,7 @@ import { AppsAdminPage } from './pages/AppsAdminPage';
 import { ExtrasPage } from './pages/ExtrasPage';
 import { IpScanPage } from './pages/IpScanPage';
 import { CardCheckPage } from './pages/CardCheckPage';
+import { BarcodeMonitorPage } from './pages/BarcodeMonitorPage';
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="extras" element={<ExtrasPage />} />
         <Route path="extras/ip-scan" element={<IpScanPage />} />
         <Route path="extras/card-check" element={<CardCheckPage />} />
+        <Route path="extras/barcode-monitor" element={<BarcodeMonitorPage />} />
         <Route path="app/:appId" element={<AppFramePage />} />
         <Route
           path="admin/users"

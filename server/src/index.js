@@ -15,6 +15,7 @@ import appsRouter from './routes/apps.js';
 import toolsRouter from './routes/tools.js';
 import brandRouter from './routes/brand.js';
 import { startAllApps, stopAllApps } from './supervisor.js';
+import { startBarcodeMonitor, stopBarcodeMonitor } from './barcodeMonitor.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
@@ -74,6 +75,7 @@ app.use((err, _req, res, _next) => {
 
 const server = app.listen(PORT, HOST, () => {
   console.log(`[admin] Gateway listening on http://${HOST}:${PORT}`);
+  startBarcodeMonitor();
   void startAllApps();
 });
 
@@ -92,6 +94,7 @@ attachAppProxyUpgrades(server, appProxies);
 
 function shutdown(signal) {
   console.log(`[admin] ${signal}, shutting down...`);
+  stopBarcodeMonitor();
   stopAllApps();
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(1), 5000).unref();

@@ -129,3 +129,42 @@ export interface CardCheckResult {
   };
   items: CardCheckItem[];
 }
+
+export interface BarcodeNominal {
+  nominal: number;
+  free: number;
+  used: number;
+  total: number;
+  percentFree: number;
+}
+
+export interface BarcodePortalSettings {
+  url: string;
+  username: string;
+  apiKeySet: boolean;
+  passwordSet: boolean;
+}
+
+export interface BarcodeSettings {
+  bvd: BarcodePortalSettings;
+  bmk: BarcodePortalSettings;
+  refreshEnabled: boolean;
+  refreshSec: number;
+  threshold: number;
+  colorBvd: string;
+  colorBmk: string;
+}
+
+export interface BarcodeSnapshot {
+  settings: BarcodeSettings;
+  updatedAt: string;
+  bases: {
+    id: 'bvd' | 'bmk';
+    title: string;
+    color: string;
+    ok: boolean;
+    error: string;
+    at: string;
+    items: BarcodeNominal[];
+  }[];
+}

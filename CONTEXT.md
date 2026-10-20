@@ -142,6 +142,7 @@ AdminPanel/
 
 - **Сканер IP** — `/extras/ip-scan`, `IpScanPage.tsx` + `tools/ip.js`: ping+ARP, макс /22, копирование IP, скан **на сервере**.
 - **Проверка карточки товара** — `/extras/card-check`, `CardCheckPage.tsx` + `tools/cardCheck.js` + `POST /api/tools/card-check`. Без ИИ. Пользователь выбирает базу **БМК** (`http://172.16.2.52:8080`) или **БВД** (`http://172.16.0.164:8080`), затем штрихкоды → LS Fusion `Item.getItemCard` только выбранной базы. БВД без входа отвечает «Нет доступа к API». Логин/пароль Fusion хранятся **на пользователя AdminPanel** в SQLite `user_fusion_credentials` (AES-256-GCM, AAD = userId+source), пароль на клиент не отдаётся. API: `GET/PUT/DELETE /api/tools/card-check/fusion`. Ключ: `FUSION_CREDENTIALS_KEY` или `JWT_SECRET`. Общий env-логин Fusion не используется — иначе все видели бы одну учётку. Признаки: `entered` / `processed` / `inactive`. При `inactive=1` «введена» недействительна. Назначение: заблокирована → **НСИ**; введена и не обработана → **ценообразование**; не введена и не обработана → **НСИ**; иное / не найдена → **НСИ**.
+- **Мониторинг остатка ШК** — `/extras/barcode-monitor`. Сервер опрашивает `GET {url}/exec?action=Markdown.getStickerBarcodeMonitor`, в карточках поле `free`. База — белая карточка с широкой цветной полосой и лёгкой заливкой заголовка и строк (БВД оранжевая, БМК зелёная). Номинал слева (число и подпись под ним), остаток справа. Число свободно тёмное; если `free` ≤ порога (по умолчанию 5000) — красным только число. Легенда на светлой плашке. Настройки в `ui_prefs` (`barcode_monitor`): URL, логин, интервал, порог, цвета; ключ и пароль — AES-256-GCM, клиенту только признак «задан». Кэш последнего успеха — `barcode_monitor_cache`. Ошибка портала не затирает прошлые цифры. Настройки и «Проверить подключение» — только admin. Промпты не затрагиваются.
 - Установщик протокола папок: `GET /api/tools/folder-opener` (в UI «Доп. ПО» пункта нет; bat ставит протокол при старте).
 
 ---
@@ -401,6 +402,7 @@ SQLite `server/data/equipment.db`, вложения `server/uploads/`. Сбор�
 21. Ключи ИИ — только `llm-keys.json` (AES-256-GCM), не `settings.json` и не ответ `GET /settings`. Не логировать секрет. C2 — после исчерпания всех ключей контура, не после первой 429. Смена `GLPI_SECRETS_KEY` после миграции сделает ключи нечитаемыми.
 22. Журнал GLPI — только локальный `activity.jsonl`, без внешней отправки и без ИИ. Настройки, промпты, ключи, справочники GLPI и журнал — только `role=admin`.
 23. Справочники секторов/категорий не дублируются в SQL AdminPanel. В рабочий список — только id из снимка исходного GLPI (или builtin). Не принимать id с клиента, которого нет в снимке. Автоопрос не затирает `enabled`. Удаление `glpi-directories.json` возвращает builtin, заявки по id не переписывать.
+24. Аудит 2026-10-20 (шлюз, точечно; ИИ-агент и маршрутизация не менялись). `?next=` после логина принимается только как путь с одного `/` (`LoginPage.tsx`, `safeNext`) — внешний URL не открывается. `POST /api/auth/login`: 20 неудач с одного IP за 15 минут → 429 (`routes/auth.js`). Дети слушают `127.0.0.1`; секрет шлюза в коде имеет запасное значение — на рабочей машине оно должно быть задано в `.env` и не совпадать с публичным примером. SSH торцов — allow по политике `assertSafeCommand`, не полный запрет shell.
 
 ---
 
@@ -418,6 +420,7 @@ SQLite `server/data/equipment.db`, вложения `server/uploads/`. Сбор�
 | Старт детей / порты | `supervisor.js`, `portGuard.js` |
 | Сайдбар / iframe | `ShellLayout.tsx`, `AppFramePage.tsx` |
 | Сканер IP | `server/src/tools/ip.js` |
+| Остаток ШК | `server/src/barcodeMonitor.js`, `client/src/pages/BarcodeMonitorPage.tsx`, `ui_prefs` `barcode_monitor` |
 | Папка Citrix | `../CitrixSessions/server/src/userFolder.js`, `scripts/install-folder-opener.ps1` |
 | Дашборд GLPI | `../GLPI/server/src/dashboard.js`, `summary.js`, `summary-llm.js`; режим `dashboardRefreshMode` |
 | Inbox / назначение / скрытый чат | `../GLPI/server/src/inbox.js` `toGlpiHtml`, `glpi.js` `knowbaseUrl`; `client/src/Inbox.jsx`; preview `POST /inbox/:id/preview` (без автоназначения), apply `includeSolutionNote !== false`; лок `ticket-lock.js`, проверка `assign-guard.js` |

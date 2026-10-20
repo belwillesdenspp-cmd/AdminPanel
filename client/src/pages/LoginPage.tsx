@@ -2,6 +2,13 @@ import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 
+function safeNext(value: string | null | undefined) {
+  if (!value || !value.startsWith('/') || value.startsWith('//') || value.includes('\\') || value.includes('://')) {
+    return '/';
+  }
+  return value;
+}
+
 export function LoginPage() {
   const { user, loading, login } = useAuth();
   const navigate = useNavigate();
@@ -12,10 +19,10 @@ export function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   if (!loading && user) {
-    const next =
+    const next = safeNext(
       (location.state as { from?: string } | null)?.from ||
-      new URLSearchParams(location.search).get('next') ||
-      '/';
+        new URLSearchParams(location.search).get('next'),
+    );
     return <Navigate to={next} replace />;
   }
 
@@ -25,10 +32,10 @@ export function LoginPage() {
     setSubmitting(true);
     try {
       await login(username.trim(), password);
-      const next =
+      const next = safeNext(
         (location.state as { from?: string } | null)?.from ||
-        new URLSearchParams(location.search).get('next') ||
-        '/';
+          new URLSearchParams(location.search).get('next'),
+      );
       navigate(next, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка входа');
@@ -62,7 +69,11 @@ export function LoginPage() {
             required
           />
         </label>
-        {error && <div className="error">{error}</div>}
+        {error && (
+          <div className="error" role="alert">
+            {error}
+          </div>
+        )}
         <button className="btn" type="submit" disabled={submitting}>
           {submitting ? 'Вход…' : 'Войти'}
         </button>

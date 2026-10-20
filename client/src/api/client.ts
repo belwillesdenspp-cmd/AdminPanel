@@ -174,6 +174,26 @@ export const api = {
       { method: 'DELETE' },
     );
   },
+  barcodeMonitor() {
+    return request<import('../types').BarcodeSnapshot>('/api/tools/barcode-monitor');
+  },
+  refreshBarcodeMonitor() {
+    return request<import('../types').BarcodeSnapshot>('/api/tools/barcode-monitor/refresh', {
+      method: 'POST',
+    });
+  },
+  saveBarcodeSettings(body: unknown) {
+    return request<import('../types').BarcodeSettings>('/api/tools/barcode-monitor/settings', {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+  },
+  testBarcodePortal(source: 'bvd' | 'bmk') {
+    return request<{ ok: boolean; count: number }>('/api/tools/barcode-monitor/test', {
+      method: 'POST',
+      body: JSON.stringify({ source }),
+    });
+  },
   async glpiAiStatus() {
     try {
       const res = await fetch('/apps/glpi/api/ai-status', { credentials: 'include' });

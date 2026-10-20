@@ -15,6 +15,34 @@ import { requireAuth } from '../middleware.js';
 
 const router = Router();
 
+const loginFails = new Map();
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_MAX_FAILS = 20;
+
+function loginKey(req) {
+  return String(req.socket?.remoteAddress || req.ip || '').replace(/^::ffff:/, '');
+}
+
+function loginBlocked(key) {
+  const row = loginFails.get(key);
+  if (!row) return false;
+  if (Date.now() - row.start > LOGIN_WINDOW_MS) {
+    loginFails.delete(key);
+    return false;
+  }
+  return row.count >= LOGIN_MAX_FAILS;
+}
+
+function noteLoginFail(key) {
+  const now = Date.now();
+  const row = loginFails.get(key);
+  if (!row || now - row.start > LOGIN_WINDOW_MS) {
+    loginFails.set(key, { start: now, count: 1 });
+    return;
+  }
+  row.count += 1;
+}
+
 router.post('/login', (req, res) => {
   const username = String(req.body?.username || '').trim();
   const password = String(req.body?.password || '');
@@ -23,10 +51,18 @@ router.post('/login', (req, res) => {
     return res.status(400).json({ error: 'Укажите логин и пароль' });
   }
 
+  const key = loginKey(req);
+  if (loginBlocked(key)) {
+    return res.status(429).json({ error: 'Слишком много попыток входа. Повторите через 15 минут.' });
+  }
+
   const user = findUserByUsername(username);
   if (!user || !user.is_active || !verifyPassword(user, password)) {
+    noteLoginFail(key);
     return res.status(401).json({ error: 'Неверный логин или пароль' });
   }
+
+  loginFails.delete(key);
 
   const token = signSession(user);
   setSessionCookie(res, token);

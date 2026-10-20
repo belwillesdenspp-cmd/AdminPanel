@@ -98,6 +98,18 @@ const NOTIFY_DEFAULTS = {
   hideSec: 20,
 };
 
+export function readUiPref(key) {
+  const row = db.prepare('SELECT value FROM ui_prefs WHERE key = ?').get(String(key));
+  return row?.value ? String(row.value) : '';
+}
+
+export function writeUiPref(key, value) {
+  db.prepare(
+    `INSERT INTO ui_prefs (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+  ).run(String(key), String(value));
+}
+
 export function getNotifyPrefs() {
   const row = db.prepare(`SELECT value FROM ui_prefs WHERE key = 'notifications'`).get();
   if (!row?.value) return { ...NOTIFY_DEFAULTS };

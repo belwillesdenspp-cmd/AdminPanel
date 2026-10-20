@@ -1,7 +1,14 @@
 import { Router } from 'express';
-import { requireAuth } from '../middleware.js';
+import { requireAdmin, requireAuth } from '../middleware.js';
 import { listIpv4Interfaces, scanSubnet } from '../tools/ip.js';
 import { checkItemCards, clearFusionLogin, getFusionLoginStatus, saveFusionLogin } from '../tools/cardCheck.js';
+import {
+  barcodeSettings,
+  refreshBarcodeMonitor,
+  saveBarcodeSettings,
+  snapshot,
+  testBarcodePortal,
+} from '../barcodeMonitor.js';
 
 let buildFolderOpenerInstallerBat = () => {
   const err = new Error('Модуль установки протокола папок недоступен');
@@ -36,6 +43,12 @@ export const TOOLS = [
     description:
       'По штрихкоду в выбранной базе Fusion (БМК или БВД) смотрит признаки и говорит, куда назначать: НСИ или ценообразование.',
     path: '/extras/card-check',
+  },
+  {
+    id: 'barcode-monitor',
+    title: 'Мониторинг остатка ШК',
+    description: 'Свободные штрихкоды стикеров уценки в базах БВД и БМК.',
+    path: '/extras/barcode-monitor',
   },
 ];
 
@@ -121,6 +134,42 @@ router.delete('/card-check/fusion', (req, res) => {
   } catch (err) {
     const status = Number(err.status) || 500;
     res.status(status).json({ error: err.message || 'Не удалось удалить вход Fusion' });
+  }
+});
+
+router.get('/barcode-monitor', (_req, res) => {
+  res.json(snapshot());
+});
+
+router.post('/barcode-monitor/refresh', async (_req, res) => {
+  try {
+    res.json(await refreshBarcodeMonitor());
+  } catch (err) {
+    const status = Number(err.status) || 500;
+    res.status(status).json({ error: err.message || 'Не удалось обновить остаток' });
+  }
+});
+
+router.get('/barcode-monitor/settings', requireAdmin, (_req, res) => {
+  res.json(barcodeSettings());
+});
+
+router.put('/barcode-monitor/settings', requireAdmin, (req, res) => {
+  try {
+    res.json(saveBarcodeSettings(req.body || {}));
+  } catch (err) {
+    const status = Number(err.status) || 500;
+    res.status(status).json({ error: err.message || 'Не удалось сохранить настройки' });
+  }
+});
+
+router.post('/barcode-monitor/test', requireAdmin, async (req, res) => {
+  try {
+    const result = await testBarcodePortal(req.body?.source);
+    res.json(result);
+  } catch (err) {
+    const status = Number(err.status) || 500;
+    res.status(status).json({ error: err.message || 'Нет связи с порталом' });
   }
 });
 
