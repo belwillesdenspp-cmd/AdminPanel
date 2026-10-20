@@ -1,0 +1,5 @@
+requests
+openpyxl
+pytest
+tzdata
+pytz
