@@ -316,6 +316,11 @@ export function ShellLayout() {
   const location = useLocation();
   const extrasActive = location.pathname.startsWith('/extras');
   const [collapsed, setCollapsed] = useState(readCollapsed);
+  const [narrow, setNarrow] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 1024px)').matches : false,
+  );
+  const [menuOpen, setMenuOpen] = useState(false);
+  const touchX = useRef(0);
   const [apps, setApps] = useState<AppInfo[]>([]);
   const [notify, setNotify] = useState<NotifyPrefs>(notifyCache || DEFAULT_NOTIFY);
 
@@ -368,6 +373,30 @@ export function ShellLayout() {
     }
   }
 
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1024px)');
+    const apply = () => {
+      setNarrow(media.matches);
+      if (!media.matches) setMenuOpen(false);
+    };
+    apply();
+    media.addEventListener('change', apply);
+    return () => media.removeEventListener('change', apply);
+  }, []);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname, appId]);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
+
   function toggleCollapsed() {
     setCollapsed((prev) => {
       const next = !prev;
@@ -385,9 +414,14 @@ export function ShellLayout() {
   const menuApps = apps.length ? apps : authApps;
   const hasGlpi = menuApps.some((item) => item.id === 'glpi');
   const hasTorcy = menuApps.some((item) => item.id === 'torcy');
+  const compact = collapsed && !narrow;
 
   return (
-    <div className={`app-shell${collapsed ? ' app-shell--collapsed' : ''}`}>
+    <div
+      className={`app-shell${compact ? ' app-shell--collapsed' : ''}${
+        menuOpen ? ' app-shell--menu-open' : ''
+      }`}
+    >
       <div
         className={`shell-alerts is-${notify.position}`}
         style={{ opacity: notify.opacity }}
@@ -396,13 +430,37 @@ export function ShellLayout() {
         <GlpiAiOverlay hideSec={notify.hideSec} />
         <TorcyAlertOverlay hide={appId === 'torcy'} enabled={hasTorcy} hideSec={notify.hideSec} />
       </div>
-      <aside className="sidebar" aria-label="Навигация">
+      {narrow && menuOpen ? (
+        <button
+          type="button"
+          className="sidebar-backdrop"
+          aria-label="Закрыть меню"
+          onClick={() => setMenuOpen(false)}
+        />
+      ) : null}
+      <aside
+        id="shell-nav"
+        className="sidebar"
+        aria-label="Навигация"
+        aria-hidden={narrow && !menuOpen}
+        onClick={(event) => {
+          if (!narrow) return;
+          if ((event.target as HTMLElement).closest('a')) setMenuOpen(false);
+        }}
+        onTouchStart={(event) => {
+          touchX.current = event.changedTouches[0]?.clientX || 0;
+        }}
+        onTouchEnd={(event) => {
+          const x = event.changedTouches[0]?.clientX || 0;
+          if (touchX.current - x > 48) setMenuOpen(false);
+        }}
+      >
         <div className="sidebar-top">
           <div className="sidebar-brand" title="AdminPanel">
             <span className="sidebar-brand-mark" aria-hidden>
               AP
             </span>
-            {!collapsed && (
+            {!compact && (
               <div className="sidebar-brand-text">
                 <strong>AdminPanel</strong>
                 <span>Сектор ТП</span>
@@ -412,10 +470,10 @@ export function ShellLayout() {
           <button
             type="button"
             className="sidebar-toggle"
-            onClick={toggleCollapsed}
-            title={collapsed ? 'Развернуть меню' : 'Свернуть меню'}
-            aria-label={collapsed ? 'Развернуть меню' : 'Свернуть меню'}
-            aria-expanded={!collapsed}
+            onClick={narrow ? () => setMenuOpen(false) : toggleCollapsed}
+            title={narrow ? 'Закрыть меню' : compact ? 'Развернуть меню' : 'Свернуть меню'}
+            aria-label={narrow ? 'Закрыть меню' : compact ? 'Развернуть меню' : 'Свернуть меню'}
+            aria-expanded={narrow ? menuOpen : !compact}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
               {collapsed ? (
@@ -440,7 +498,7 @@ export function ShellLayout() {
         </div>
 
         <nav className="sidebar-section" aria-label="Разделы панели">
-          {!collapsed && <div className="sidebar-label">Панель</div>}
+          {!compact && <div className="sidebar-label">Панель</div>}
           <NavLink
             to="/"
             end
@@ -452,7 +510,7 @@ export function ShellLayout() {
             <span className="sidebar-link-icon">
               <NavGlyph kind="home" />
             </span>
-            {!collapsed && <span className="sidebar-link-text">Обзор</span>}
+            {!compact && <span className="sidebar-link-text">Обзор</span>}
           </NavLink>
           <NavLink
             to="/extras"
@@ -462,7 +520,7 @@ export function ShellLayout() {
             <span className="sidebar-link-icon">
               <NavGlyph kind="tools" />
             </span>
-            {!collapsed && <span className="sidebar-link-text">Доп. ПО</span>}
+            {!compact && <span className="sidebar-link-text">Доп. ПО</span>}
           </NavLink>
           {user.role === 'admin' && (
             <>
@@ -474,7 +532,7 @@ export function ShellLayout() {
                 <span className="sidebar-link-icon">
                   <NavGlyph kind="users" />
                 </span>
-                {!collapsed && <span className="sidebar-link-text">Пользователи</span>}
+                {!compact && <span className="sidebar-link-text">Пользователи</span>}
               </NavLink>
               <NavLink
                 to="/admin/apps"
@@ -484,7 +542,7 @@ export function ShellLayout() {
                 <span className="sidebar-link-icon">
                   <NavGlyph kind="apps" />
                 </span>
-                {!collapsed && (
+                {!compact && (
                   <span className="sidebar-link-text">Управление приложениями</span>
                 )}
               </NavLink>
@@ -495,7 +553,7 @@ export function ShellLayout() {
         <div className="sidebar-divider" role="separator" />
 
         <nav className="sidebar-section sidebar-section--apps" aria-label="Приложения">
-          {!collapsed && (
+          {!compact && (
             <div className="sidebar-label-row">
               <div className="sidebar-label">Приложения</div>
               <button
@@ -546,7 +604,7 @@ export function ShellLayout() {
                   />
                   <span className={`sidebar-status ${statusClass}`} aria-hidden />
                 </span>
-                {!collapsed && (
+                {!compact && (
                   <span className="sidebar-link-text">
                     <span className="sidebar-app-title">{app.title}</span>
                     <span className="sidebar-app-meta">
@@ -555,7 +613,7 @@ export function ShellLayout() {
                   </span>
                 )}
               </NavLink>
-                {!collapsed && (
+                {!compact && (
                   <button
                     type="button"
                     className={`sidebar-pin${app.pinned ? ' is-on' : ''}`}
@@ -576,7 +634,7 @@ export function ShellLayout() {
             <span className="sidebar-user-avatar" aria-hidden>
               {(user.displayName || user.username || '?').slice(0, 1).toUpperCase()}
             </span>
-            {!collapsed && (
+            {!compact && (
               <span className="sidebar-user-text">
                 <strong>{user.displayName}</strong>
                 <span>{user.role === 'admin' ? 'админ' : 'специалист'}</span>
@@ -608,12 +666,27 @@ export function ShellLayout() {
                 strokeLinejoin="round"
               />
             </svg>
-            {!collapsed && <span>Выход</span>}
+            {!compact && <span>Выход</span>}
           </button>
         </div>
       </aside>
 
       <main className="shell-main">
+        {narrow ? (
+          <button
+            type="button"
+            className="shell-menu-btn"
+            aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
+            aria-expanded={menuOpen}
+            aria-controls="shell-nav"
+            title={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </button>
+        ) : null}
         <Outlet />
       </main>
     </div>

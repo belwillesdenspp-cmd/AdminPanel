@@ -15,6 +15,9 @@
   --radius: 18px;
   --font: 'Manrope', sans-serif;
   --display: 'Source Serif 4', Georgia, serif;
+  --scroll-size: 8px;
+  --scroll-thumb: rgba(19, 32, 40, 0.32);
+  --scroll-thumb-hover: #0f7a6b;
 }
 
 * {
@@ -48,6 +51,33 @@ a {
   text-decoration: none;
 }
 
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: var(--scroll-size);
+  height: var(--scroll-size);
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scroll-thumb-hover);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 .app-shell {
   height: 100vh;
   min-height: 100vh;
@@ -63,6 +93,20 @@ a {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+}
+
+.sidebar,
+.shell-main {
+  --scroll-thumb: rgba(245, 241, 232, 0.42);
+  --scroll-thumb-hover: rgba(245, 241, 232, 0.72);
+}
+
+.panel,
+.modal,
+.table-wrap,
+.card {
+  --scroll-thumb: rgba(19, 32, 40, 0.32);
+  --scroll-thumb-hover: #0f7a6b;
 }
 
 .sidebar {
@@ -1518,5 +1562,109 @@ th {
   .barcode-settings-grid,
   .barcode-settings-split {
     grid-template-columns: 1fr;
+  }
+}
+
+.shell-menu-btn,
+.sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .shell-menu-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin: 0.4rem 0.5rem;
+    border: 0;
+    border-radius: 12px;
+    background: #132028;
+    color: #f5f1e8;
+    flex: 0 0 auto;
+  }
+
+  .sidebar {
+    position: fixed;
+    z-index: 45;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(288px, 88vw);
+    flex: none;
+    transform: translateX(-105%);
+    transition: transform 0.22s ease;
+    overflow: auto;
+  }
+
+  .app-shell--menu-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    border: 0;
+    padding: 0;
+    background: rgba(8, 18, 24, 0.55);
+    cursor: pointer;
+  }
+
+  .app-shell--menu-open .shell-main {
+    overflow: hidden;
+  }
+
+  .app-frame-shell {
+    height: auto;
+  }
+
+  .page,
+  .panel,
+  form,
+  .card {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .modal-backdrop {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .modal,
+  .modal--wide {
+    width: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    overflow: auto;
+  }
+
+  .btn,
+  .sidebar-link,
+  .check-row,
+  .sidebar-toggle,
+  .sidebar-pin {
+    min-height: 44px;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .shell-alerts {
+    top: 3.4rem;
+    width: min(42rem, calc(100% - 1rem));
+  }
+
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+    font-size: 16px;
   }
 }
