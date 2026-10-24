@@ -125,20 +125,44 @@ export function saveTelegramSettings(patch = {}) {
   return publicTelegram(next);
 }
 
+function emptyBaseState() {
+  return { status: 'ok', at: '', qty: null };
+}
+
 export function readAlertState() {
   try {
     const parsed = JSON.parse(readUiPref(STATE_KEY) || '{}');
-    return { fingerprint: String(parsed.fingerprint || ''), at: String(parsed.at || '') };
+    const bases = parsed?.bases && typeof parsed.bases === 'object' ? parsed.bases : {};
+    return { bases };
   } catch {
-    return { fingerprint: '', at: '' };
+    return { bases: {} };
   }
 }
 
-export function writeAlertState(fingerprint) {
-  writeUiPref(STATE_KEY, JSON.stringify({
-    fingerprint: String(fingerprint || ''),
+export function writeAlertState(bases) {
+  writeUiPref(STATE_KEY, JSON.stringify({ bases: bases && typeof bases === 'object' ? bases : {} }));
+}
+
+export function getAlertState(baseId) {
+  const row = readAlertState().bases[String(baseId || '')];
+  if (!row || (row.status !== 'alarm' && row.status !== 'ok')) return emptyBaseState();
+  return {
+    status: row.status,
+    at: String(row.at || ''),
+    qty: Number.isFinite(Number(row.qty)) ? Number(row.qty) : null,
+  };
+}
+
+export function setAlertState(baseId, status, qty = null) {
+  const id = String(baseId || '');
+  const bases = { ...readAlertState().bases };
+  bases[id] = {
+    status: status === 'alarm' ? 'alarm' : 'ok',
     at: new Date().toISOString(),
-  }));
+    qty: Number.isFinite(Number(qty)) ? Number(qty) : null,
+  };
+  writeAlertState(bases);
+  return bases[id];
 }
 
 export function readUpdateOffset() {

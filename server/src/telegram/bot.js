@@ -1,6 +1,6 @@
 /** Опрос или webhook. Чужой чат остаток не получает. */
 import { telegramCall, telegramCallRetry } from './api.js';
-import { BALANCE_MARKUP, considerBarcodeAlert, registerBarcodeBot, balanceReply } from './barcodeApp.js';
+import { BALANCE_BUTTON, BALANCE_MARKUP, considerBarcodeAlert, registerBarcodeBot, balanceReply } from './barcodeApp.js';
 import { commandHandler, commandNames } from './registry.js';
 import {
   noteTelegram,
@@ -87,7 +87,11 @@ async function onCommand(token, chatId, command) {
     return;
   }
   const text = await handler({ chatId, command });
-  await reply(token, chatId, text, { reply_markup: BALANCE_MARKUP });
+  const stock = command === 'balance' || command === 'status';
+  await reply(token, chatId, text, {
+    reply_markup: BALANCE_MARKUP,
+    ...(stock ? { parse_mode: 'HTML' } : {}),
+  });
 }
 
 export async function handleUpdate(update) {
@@ -109,9 +113,17 @@ export async function handleUpdate(update) {
     return;
   }
   const message = update?.message;
-  const text = String(message?.text || '');
+  const text = String(message?.text || '').trim();
+  const chatId = message?.chat?.id;
+  if (text === BALANCE_BUTTON) {
+    if (!allowed(chatId)) return;
+    await reply(settings.token, chatId, await balanceReply(), {
+      reply_markup: BALANCE_MARKUP,
+      parse_mode: 'HTML',
+    });
+    return;
+  }
   if (!text.startsWith('/')) return;
-  const chatId = message.chat?.id;
   const command = text.slice(1).split(/[\s@]/)[0].toLowerCase();
   if (!allowed(chatId)) {
     if (command === 'start' && settings.token) {

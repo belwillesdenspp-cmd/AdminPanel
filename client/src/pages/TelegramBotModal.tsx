@@ -17,6 +17,7 @@ export function TelegramBotModal({ onClose }: { onClose: () => void }) {
   const [token, setToken] = useState('');
   const [webhookSecret, setWebhookSecret] = useState('');
   const [chats, setChats] = useState('');
+  const [thresholdText, setThresholdText] = useState('');
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [busy, setBusy] = useState(false);
@@ -25,6 +26,7 @@ export function TelegramBotModal({ onClose }: { onClose: () => void }) {
     void api.telegramSettings().then((row) => {
       setForm(row);
       setChats(row.chatIds.join('\n'));
+      setThresholdText(String(row.threshold));
     }).catch((err) => {
       setError(err instanceof Error ? err.message : 'Не удалось загрузить');
     });
@@ -37,6 +39,11 @@ export function TelegramBotModal({ onClose }: { onClose: () => void }) {
   async function save(e: FormEvent) {
     e.preventDefault();
     if (!form) return;
+    const threshold = Number(thresholdText);
+    if (!/^\d+$/.test(thresholdText) || !Number.isFinite(threshold)) {
+      setError('Укажите порог целым числом');
+      return;
+    }
     setBusy(true);
     setError('');
     setInfo('');
@@ -46,11 +53,13 @@ export function TelegramBotModal({ onClose }: { onClose: () => void }) {
         chatIds: chats,
         token,
         webhookSecret,
+        threshold,
       });
       setForm(saved);
       setToken('');
       setWebhookSecret('');
       setChats(saved.chatIds.join('\n'));
+      setThresholdText(String(saved.threshold));
       setInfo('Сохранено');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось сохранить');
@@ -134,10 +143,11 @@ export function TelegramBotModal({ onClose }: { onClose: () => void }) {
             <label>
               Порог остатка
               <input
-                type="number"
-                min={0}
-                value={form.threshold}
-                onChange={(e) => patch({ threshold: Number(e.target.value) })}
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                value={thresholdText}
+                onChange={(e) => setThresholdText(e.target.value.replace(/\D/g, ''))}
               />
             </label>
             <label>
