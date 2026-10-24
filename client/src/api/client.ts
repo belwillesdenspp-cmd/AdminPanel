@@ -253,6 +253,23 @@ export const api = {
   async notifyPrefs() {
     return request<{ prefs: import('../types').NotifyPrefs }>('/api/apps/notifications');
   },
+  telegramSettings() {
+    return request<import('../pages/TelegramBotModal').TelegramSettings>('/api/apps/telegram');
+  },
+  saveTelegramSettings(body: unknown) {
+    return request<import('../pages/TelegramBotModal').TelegramSettings>('/api/apps/telegram', {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+  },
+  testTelegram() {
+    return request<{ ok: boolean; username: string }>('/api/apps/telegram/test', { method: 'POST' });
+  },
+  sendTelegramTest() {
+    return request<{ ok: boolean; sent: number; failed: number }>('/api/apps/telegram/test-message', {
+      method: 'POST',
+    });
+  },
   async saveNotifyPrefs(body: Partial<import('../types').NotifyPrefs>) {
     return request<{ prefs: import('../types').NotifyPrefs }>('/api/apps/notifications', {
       method: 'PUT',

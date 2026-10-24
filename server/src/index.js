@@ -16,6 +16,7 @@ import toolsRouter from './routes/tools.js';
 import brandRouter from './routes/brand.js';
 import { startAllApps, stopAllApps } from './supervisor.js';
 import { startBarcodeMonitor, stopBarcodeMonitor } from './barcodeMonitor.js';
+import { startTelegramBot, stopTelegramBot, telegramWebhook } from './telegram/bot.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
@@ -45,6 +46,7 @@ app.get('/favicon.ico', sendFaviconIco);
 app.get('/brand/:file', sendBrandFile);
 app.use('/api/brand', brandRouter);
 app.use('/api', express.json({ limit: '1mb' }));
+app.post('/api/telegram/webhook', telegramWebhook);
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'admin-panel' });
@@ -76,6 +78,7 @@ app.use((err, _req, res, _next) => {
 const server = app.listen(PORT, HOST, () => {
   console.log(`[admin] Gateway listening on http://${HOST}:${PORT}`);
   startBarcodeMonitor();
+  startTelegramBot();
   void startAllApps();
 });
 
@@ -95,6 +98,7 @@ attachAppProxyUpgrades(server, appProxies);
 function shutdown(signal) {
   console.log(`[admin] ${signal}, shutting down...`);
   stopBarcodeMonitor();
+  stopTelegramBot();
   stopAllApps();
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(1), 5000).unref();

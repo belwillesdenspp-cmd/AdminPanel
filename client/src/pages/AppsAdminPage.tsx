@@ -4,6 +4,7 @@ import { APP_ICON_KEYS, APP_ICON_LABELS, AppGlyph, AppMenuIcon } from '../appIco
 import { useAuth } from '../auth';
 import { applyFavicon, type FaviconState } from '../favicon';
 import type { AppInfo, NotifyPrefs } from '../types';
+import { TelegramBotModal } from './TelegramBotModal';
 
 function IconEdit() {
   return (
@@ -41,6 +42,7 @@ export function AppsAdminPage() {
   const [editApp, setEditApp] = useState<AppInfo | null>(null);
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [faviconOpen, setFaviconOpen] = useState(false);
+  const [telegramOpen, setTelegramOpen] = useState(false);
 
   async function load() {
     setError('');
@@ -97,6 +99,9 @@ export function AppsAdminPage() {
           </button>
           <button type="button" className="btn" onClick={() => setFaviconOpen(true)}>
             Иконка приложения
+          </button>
+          <button type="button" className="btn" onClick={() => setTelegramOpen(true)}>
+            Telegram-бот
           </button>
         </div>
         {error && <div className="error">{error}</div>}
@@ -199,6 +204,7 @@ export function AppsAdminPage() {
         />
       )}
       {notifyOpen && <NotifyModal onClose={() => setNotifyOpen(false)} />}
+      {telegramOpen && <TelegramBotModal onClose={() => setTelegramOpen(false)} />}
       {faviconOpen && <FaviconModal onClose={() => setFaviconOpen(false)} />}
     </div>
   );

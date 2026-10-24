@@ -1,6 +1,7 @@
 /** Остаток свободных ШК Fusion. Секреты в ui_prefs только шифром. */
 import crypto from 'node:crypto';
 import { readUiPref, writeUiPref } from './db.js';
+import { onBarcodeRefreshed } from './telegram/bot.js';
 
 const SETTINGS_KEY = 'barcode_monitor';
 const CACHE_KEY = 'barcode_monitor_cache';
@@ -243,7 +244,9 @@ export async function refreshBarcodeMonitor(only) {
       }
     }));
     writeUiPref(CACHE_KEY, JSON.stringify(next));
-    return snapshot();
+    const snap = snapshot();
+    void onBarcodeRefreshed(snap);
+    return snap;
   })();
   try {
     return await refreshing;

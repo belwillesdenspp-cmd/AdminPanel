@@ -17,6 +17,8 @@ import {
   saveNotifyPrefs,
 } from '../db.js';
 import { requireAdmin, requireAuth } from '../middleware.js';
+import { publicTelegram, saveTelegramSettings } from '../telegram/settings.js';
+import { sendTelegramTest, testTelegramConnection, wakeTelegramPoll } from '../telegram/bot.js';
 import { getAppHealth, getRuntimeStatus } from '../supervisor.js';
 
 const router = Router();
@@ -182,6 +184,36 @@ router.get('/notifications', requireAuth, (_req, res) => {
 
 router.put('/notifications', requireAdmin, (req, res) => {
   res.json({ prefs: saveNotifyPrefs(req.body || {}) });
+});
+
+router.get('/telegram', requireAdmin, (_req, res) => {
+  res.json(publicTelegram());
+});
+
+router.put('/telegram', requireAdmin, (req, res) => {
+  try {
+    const settings = saveTelegramSettings(req.body || {});
+    wakeTelegramPoll();
+    res.json(settings);
+  } catch (err) {
+    res.status(err.status || 400).json({ error: err.message || 'Не удалось сохранить' });
+  }
+});
+
+router.post('/telegram/test', requireAdmin, async (_req, res) => {
+  try {
+    res.json(await testTelegramConnection());
+  } catch (err) {
+    res.status(err.status || 502).json({ error: err.message || 'Нет связи с Telegram' });
+  }
+});
+
+router.post('/telegram/test-message', requireAdmin, async (_req, res) => {
+  try {
+    res.json(await sendTelegramTest());
+  } catch (err) {
+    res.status(err.status || 502).json({ error: err.message || 'Не удалось отправить' });
+  }
 });
 
 export default router;

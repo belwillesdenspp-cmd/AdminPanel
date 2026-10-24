@@ -1083,8 +1083,21 @@ th {
   font-family: var(--display);
 }
 
+.modal.form input,
+.modal.form select,
+.modal.form textarea {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.modal.form .check-row input {
+  width: 1.15rem;
+}
+
 .modal-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.6rem;
   margin-top: 1rem;
