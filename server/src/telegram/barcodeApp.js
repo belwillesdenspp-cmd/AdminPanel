@@ -6,7 +6,7 @@ export const BALANCE_BUTTON = 'Узнать остаток';
 
 /** Кнопки снизу чата, не внутри сообщения. */
 export const BALANCE_MARKUP = {
-  keyboard: [[{ text: BALANCE_BUTTON }]],
+  keyboard: [[{ text: BALANCE_BUTTON }], [{ text: '📊 Получить сводку' }]],
   resize_keyboard: true,
   is_persistent: true,
 };

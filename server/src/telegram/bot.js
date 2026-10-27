@@ -1,6 +1,7 @@
 /** Опрос или webhook. Чужой чат остаток не получает. */
 import { telegramCall, telegramCallRetry } from './api.js';
 import { BALANCE_BUTTON, BALANCE_MARKUP, considerBarcodeAlert, registerBarcodeBot, balanceReply } from './barcodeApp.js';
+import { SUMMARY_BUTTON, WAIT_TEXT, digestPeriod, fetchDigest, formatDigestMessage, periodKeyboard } from './digest.js';
 import { commandHandler, commandNames } from './registry.js';
 import {
   noteTelegram,
@@ -10,6 +11,53 @@ import {
 } from './settings.js';
 
 registerBarcodeBot();
+
+const digestBusy = new Set();
+
+async function removeMessage(token, chatId, messageId) {
+  if (!messageId) return;
+  try {
+    await telegramCall(token, 'deleteMessage', { chat_id: chatId, message_id: messageId });
+  } catch {
+    /* сообщение уже ушло — сводку всё равно отправим */
+  }
+}
+
+async function runDigest(token, chatId, period, pickerId) {
+  const key = `${chatId}:${period}`;
+  if (digestBusy.has(key)) return;
+  digestBusy.add(key);
+  let waitId = 0;
+  try {
+    await removeMessage(token, chatId, pickerId);
+    const wait = await telegramCallRetry(token, 'sendMessage', {
+      chat_id: chatId,
+      text: WAIT_TEXT,
+      reply_markup: BALANCE_MARKUP,
+    });
+    waitId = wait?.message_id || 0;
+    let text = '❌ Не удалось получить сводку. Попробуйте позже';
+    try {
+      text = formatDigestMessage(await fetchDigest(period));
+    } catch (err) {
+      noteTelegram({ kind: 'digest', chatId, ok: false, error: err.message, summary: period });
+    }
+    await removeMessage(token, chatId, waitId);
+    waitId = 0;
+    await telegramCallRetry(token, 'sendMessage', {
+      chat_id: chatId,
+      text: String(text).slice(0, 4000),
+      parse_mode: 'HTML',
+      reply_markup: BALANCE_MARKUP,
+    }, { timeoutMs: 15000 });
+    noteTelegram({ kind: 'digest', chatId, ok: true, summary: period });
+  } catch (err) {
+    await removeMessage(token, chatId, waitId);
+    noteTelegram({ kind: 'digest', chatId, ok: false, error: err.message, summary: period });
+  } finally {
+    digestBusy.delete(key);
+  }
+}
 
 let running = false;
 let pollAbort = null;
@@ -69,6 +117,7 @@ function startText() {
     'Команды:',
     '/balance — остаток штрихкодов',
     '/status — то же, что /balance',
+    'Кнопка «Получить сводку» — разбор заявок за сегодня или вчера',
   ];
   if (names.some((name) => name !== 'balance' && name !== 'status')) {
     lines.push(...names.filter((name) => name !== 'balance' && name !== 'status').map((name) => `/${name}`));
@@ -108,13 +157,25 @@ export async function handleUpdate(update) {
     }
     if (!allowed(chatId)) return;
     if (callback.data === 'barcode:balance') {
-      await reply(token, chatId, await balanceReply(), { reply_markup: BALANCE_MARKUP });
+      await reply(token, chatId, await balanceReply(), { reply_markup: BALANCE_MARKUP, parse_mode: 'HTML' });
+    }
+    const period = digestPeriod(callback.data);
+    if (period) {
+      const pickerId = callback.message?.message_id;
+      void runDigest(token, chatId, period, pickerId);
     }
     return;
   }
   const message = update?.message;
   const text = String(message?.text || '').trim();
   const chatId = message?.chat?.id;
+  if (text === SUMMARY_BUTTON) {
+    if (!allowed(chatId)) return;
+    await reply(settings.token, chatId, 'Выберите период для анализа:', {
+      reply_markup: periodKeyboard(),
+    });
+    return;
+  }
   if (text === BALANCE_BUTTON) {
     if (!allowed(chatId)) return;
     await reply(settings.token, chatId, await balanceReply(), {
