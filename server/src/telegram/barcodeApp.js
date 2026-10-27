@@ -51,7 +51,26 @@ function measuredItems(base) {
   return (base?.items || []).filter((item) => Number.isFinite(Number(item.free)) && Number.isFinite(Number(item.nominal)));
 }
 
+function levelWas(prev, level) {
+  const nested = prev?.[level];
+  if (nested?.status === 'alarm' || nested?.status === 'ok') return nested.status;
+  if (level === 'low' && (prev?.status === 'alarm' || prev?.status === 'ok')) return prev.status;
+  return 'ok';
+}
+
+function levelStep(was, alarm, now, qty, prevLevel) {
+  const status = alarm ? 'alarm' : 'ok';
+  const row = { status, at: now, qty };
+  const entered = status === 'alarm' && was !== 'alarm';
+  const committed = entered
+    ? { status: 'ok', at: prevLevel?.at || '', qty: prevLevel?.qty ?? null }
+    : row;
+  return { was, status, row, entered, committed };
+}
+
 export function planAlerts(bases, threshold, prevBases = {}) {
+  const { min, mid } = limitsOf(threshold);
+  const midOn = mid > min;
   const proposed = { ...(prevBases || {}) };
   const committed = { ...(prevBases || {}) };
   const entered = [];
@@ -62,25 +81,46 @@ export function planAlerts(bases, threshold, prevBases = {}) {
     if (!id) continue;
     const items = measuredItems(base);
     if (!items.length) continue;
-    const alarm = items.some((item) => Number(item.free) < threshold);
+    const prev = prevBases?.[id];
     const qty = Math.min(...items.map((item) => Number(item.free)));
-    const was = proposed[id]?.status === 'alarm' ? 'alarm' : 'ok';
-    const status = alarm ? 'alarm' : 'ok';
-    const row = { status, at: now, qty };
-    proposed[id] = row;
-    if (status === 'alarm' && was !== 'alarm') {
-      entered.push(id);
-      committed[id] = proposed[id] && was === 'alarm' ? row : { status: 'ok', at: prevBases?.[id]?.at || '', qty: prevBases?.[id]?.qty ?? null };
-      changes.push({ id, title: base.title || id, from: was, to: status, qty });
-    } else {
-      committed[id] = row;
-      if (status !== was) changes.push({ id, title: base.title || id, from: was, to: status, qty });
+    const lowAlarm = items.some((item) => Number(item.free) < min);
+    const midAlarm = midOn && items.some((item) => Number(item.free) < mid);
+    const low = levelStep(levelWas(prev, 'low'), lowAlarm, now, qty, prev?.low || prev);
+    const midStep = levelStep(levelWas(prev, 'mid'), midAlarm, now, qty, prev?.mid);
+    proposed[id] = { low: low.row, mid: midStep.row };
+    committed[id] = { low: low.committed, mid: midStep.committed };
+    if (low.entered || midStep.entered) entered.push(id);
+    for (const step of [
+      ['low', low],
+      ['mid', midStep],
+    ]) {
+      const [level, item] = step;
+      if (item.status !== item.was) {
+        changes.push({ id, title: base.title || id, level, from: item.was, to: item.status, qty });
+      }
     }
   }
   return { entered, proposed, committed, changes };
 }
 
-function stockBlocks(bases, threshold) {
+function limitsOf(value) {
+  if (typeof value === 'number') return { min: value, mid: value };
+  const min = Number(value?.min);
+  const mid = Number(value?.mid);
+  return {
+    min: Number.isFinite(min) ? min : 0,
+    mid: Number.isFinite(mid) ? mid : (Number.isFinite(min) ? min : 0),
+  };
+}
+
+function band(free, min, mid) {
+  if (free < min) return { mark: '🔴', note: `ниже минимума ${qtyText(min)}`, warn: true };
+  if (mid > min && free < mid) return { mark: '🟠', note: `ниже среднего ${qtyText(mid)}`, warn: true };
+  return { mark: '🟢', note: 'в норме', warn: false };
+}
+
+function stockBlocks(bases, limits) {
+  const { min, mid } = limitsOf(limits);
   const blocks = [];
   for (const base of bases || []) {
     const title = esc(base.title || base.id);
@@ -91,11 +131,9 @@ function stockBlocks(bases, threshold) {
     } else {
       for (const item of items) {
         const free = Number(item.free);
-        const low = free < threshold;
-        const mark = low ? '🔴' : '🟢';
-        const note = low ? `ниже нормы ${qtyText(threshold)}` : 'в норме';
-        const count = low ? `<b>${qtyText(free)}</b>` : qtyText(free);
-        lines.push(`${mark} Номинал ${esc(item.nominal)}: ${count} шт. (${note})`);
+        const level = band(free, min, mid);
+        const count = level.warn ? `<b>${qtyText(free)}</b>` : qtyText(free);
+        lines.push(`${level.mark} Номинал ${esc(item.nominal)}: ${count} шт. (${level.note})`);
       }
     }
     blocks.push(lines.join('\n'));
@@ -103,18 +141,31 @@ function stockBlocks(bases, threshold) {
   return blocks.join('\n\n');
 }
 
+function anyWarn(bases, limits) {
+  const { min, mid } = limitsOf(limits);
+  return (bases || []).some((base) => measuredItems(base).some((item) => band(Number(item.free), min, mid).warn));
+}
+
+function anyLow(bases, limits) {
+  const { min } = limitsOf(limits);
+  return (bases || []).some((base) => measuredItems(base).some((item) => Number(item.free) < min));
+}
+
 export function formatBalance(snap, threshold) {
   const body = stockBlocks(snap?.bases, threshold);
   const lines = ['📦 <b>Остаток штрихкодов</b>', '', body || 'Данных ещё нет.'];
-  if (lowRows(snap?.bases, threshold).length) lines.push('', 'Требуется пополнение.');
+  if (anyWarn(snap?.bases, threshold)) lines.push('', 'Требуется пополнение.');
   if (snap?.updatedAt) lines.push('', `🕒 Проверено: ${esc(when(snap.updatedAt))}`);
   return lines.join('\n');
 }
 
 export function formatAlert(snap, threshold) {
   const body = stockBlocks(snap?.bases, threshold);
+  const title = anyLow(snap?.bases, threshold)
+    ? '🚨 <b>ВНИМАНИЕ! НИЗКИЙ ОСТАТОК ШТРИХКОДОВ</b> 🚨'
+    : '🟠 <b>ВНИМАНИЕ! ОСТАТОК НИЖЕ СРЕДНЕГО</b>';
   return [
-    '🚨 <b>ВНИМАНИЕ! НИЗКИЙ ОСТАТОК ШТРИХКОДОВ</b> 🚨',
+    title,
     'Требуется пополнение!',
     '',
     body,
@@ -130,25 +181,26 @@ export async function considerBarcodeAlert(snap, send) {
   const settings = telegramSecrets();
   if (!settings.enabled || !settings.notifyEnabled || !settings.apps.barcode) return { sent: false };
   if (!settings.token || !settings.chatIds.length) return { sent: false };
-  const plan = planAlerts(snap?.bases, settings.threshold, readAlertState().bases);
+  const limits = { min: settings.threshold, mid: settings.midThreshold };
+  const plan = planAlerts(snap?.bases, limits, readAlertState().bases);
   if (!plan.entered.length) {
     writeAlertState(plan.proposed);
     for (const change of plan.changes) {
       noteTelegram({
         kind: 'state',
         ok: true,
-        summary: `${change.title}: ${change.from === 'alarm' ? 'тревога' : 'норма'} → ${change.to === 'alarm' ? 'тревога' : 'норма'}, ${change.qty}`,
+        summary: `${change.title}, ${change.level === 'mid' ? 'средний' : 'минимум'}: ${change.from === 'alarm' ? 'тревога' : 'норма'} → ${change.to === 'alarm' ? 'тревога' : 'норма'}, ${change.qty}`,
       });
     }
     return { sent: false };
   }
   busy = true;
   const summary = (snap?.bases || [])
-    .map((base) => `${base.title || base.id}: ${plan.proposed[base.id]?.qty ?? '—'}`)
+    .map((base) => `${base.title || base.id}: ${plan.proposed[base.id]?.low?.qty ?? '—'}`)
     .join(', ');
   try {
     const result = await send(
-      formatAlert(snap, settings.threshold),
+      formatAlert(snap, limits),
       { reply_markup: BALANCE_MARKUP, parse_mode: 'HTML' },
       { kind: 'alert', summary: `Отправлено уведомление. ${summary}` },
     );
@@ -159,7 +211,7 @@ export async function considerBarcodeAlert(snap, send) {
         noteTelegram({
           kind: 'state',
           ok: true,
-          summary: `${change.title}: ${change.from === 'alarm' ? 'тревога' : 'норма'} → ${change.to === 'alarm' ? 'тревога' : 'норма'}, ${change.qty}`,
+          summary: `${change.title}, ${change.level === 'mid' ? 'средний' : 'минимум'}: ${change.from === 'alarm' ? 'тревога' : 'норма'} → ${change.to === 'alarm' ? 'тревога' : 'норма'}, ${change.qty}`,
         });
       }
     }
@@ -177,7 +229,7 @@ export async function balanceReply() {
   const settings = telegramSecrets();
   if (!settings.apps.barcode) return 'Мониторинг остатка штрихкодов в боте выключен.';
   const { snapshot } = await import('../barcodeMonitor.js');
-  return formatBalance(snapshot(), settings.threshold);
+  return formatBalance(snapshot(), { min: settings.threshold, mid: settings.midThreshold });
 }
 
 export function registerBarcodeBot() {

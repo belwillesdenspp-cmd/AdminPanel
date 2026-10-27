@@ -33,9 +33,9 @@ test('сообщение делит базы и не ломает HTML', () => {
 test('тревога по базе один раз, пока остаток ниже порога', () => {
   const first = planAlerts(snap.bases, 5000, {});
   assert.deepEqual(first.entered, ['bvd']);
-  assert.equal(first.proposed.bvd.status, 'alarm');
-  assert.equal(first.proposed.bmk.status, 'ok');
-  assert.equal(first.committed.bvd.status, 'ok');
+  assert.equal(first.proposed.bvd.low.status, 'alarm');
+  assert.equal(first.proposed.bmk.low.status, 'ok');
+  assert.equal(first.committed.bvd.low.status, 'ok');
 
   const again = planAlerts(
     [
@@ -46,7 +46,7 @@ test('тревога по базе один раз, пока остаток ни
     first.proposed,
   );
   assert.deepEqual(again.entered, []);
-  assert.equal(again.proposed.bvd.status, 'alarm');
+  assert.equal(again.proposed.bvd.low.status, 'alarm');
 
   const bmkFalls = planAlerts(
     [
@@ -63,6 +63,48 @@ test('тревога по базе один раз, пока остаток ни
     items: base.items.map((item) => ({ ...item, free: 9000 })),
   })), 5000, bmkFalls.proposed);
   assert.deepEqual(recovered.entered, []);
-  assert.equal(recovered.proposed.bvd.status, 'ok');
-  assert.equal(recovered.proposed.bmk.status, 'ok');
+  assert.equal(recovered.proposed.bvd.low.status, 'ok');
+  assert.equal(recovered.proposed.bmk.low.status, 'ok');
+});
+
+test('средний порог — оранжевый кружок и отдельная тревога один раз', () => {
+  const bases = [
+    { id: 'bvd', title: 'БВД', items: [{ nominal: 1, free: 4000 }, { nominal: 2, free: 7000 }, { nominal: 3, free: 9000 }] },
+  ];
+  const limits = { min: 5000, mid: 8000 };
+  const text = formatBalance({ bases, updatedAt: snap.updatedAt }, limits);
+  assert.match(text, /🔴 Номинал 1: <b>4 000<\/b> шт\. \(ниже минимума 5 000\)/);
+  assert.match(text, /🟠 Номинал 2: <b>7 000<\/b> шт\. \(ниже среднего 8 000\)/);
+  assert.match(text, /🟢 Номинал 3: 9 000 шт\. \(в норме\)/);
+  const onlyMid = formatAlert({
+    bases: [{ id: 'bvd', title: 'БВД', items: [{ nominal: 2, free: 7000 }] }],
+  }, limits);
+  assert.match(onlyMid, /ОСТАТОК НИЖЕ СРЕДНЕГО/);
+  assert.match(onlyMid, /🟠 Номинал 2/);
+  assert.doesNotMatch(onlyMid, /🔴/);
+
+  const midOnly = [{ id: 'bvd', title: 'БВД', items: [{ nominal: 2, free: 7000 }] }];
+  const first = planAlerts(midOnly, limits, {});
+  assert.deepEqual(first.entered, ['bvd']);
+  assert.equal(first.proposed.bvd.mid.status, 'alarm');
+  assert.equal(first.proposed.bvd.low.status, 'ok');
+  const again = planAlerts(
+    [{ id: 'bvd', title: 'БВД', items: [{ nominal: 2, free: 6500 }] }],
+    limits,
+    first.proposed,
+  );
+  assert.deepEqual(again.entered, []);
+  const dropped = planAlerts(
+    [{ id: 'bvd', title: 'БВД', items: [{ nominal: 2, free: 1000 }] }],
+    limits,
+    again.proposed,
+  );
+  assert.deepEqual(dropped.entered, ['bvd']);
+  assert.equal(dropped.proposed.bvd.low.status, 'alarm');
+  assert.equal(dropped.committed.bvd.mid.status, 'alarm');
+  assert.equal(dropped.committed.bvd.low.status, 'ok');
+  const backToMid = planAlerts(midOnly, limits, dropped.proposed);
+  assert.deepEqual(backToMid.entered, []);
+  assert.equal(backToMid.proposed.bvd.low.status, 'ok');
+  assert.equal(backToMid.proposed.bvd.mid.status, 'alarm');
 });

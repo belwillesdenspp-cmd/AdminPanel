@@ -13,6 +13,7 @@ const DEFAULTS = {
   transport: 'poll',
   chatIds: [],
   threshold: 5000,
+  midThreshold: 5000,
   apps: { barcode: true },
 };
 
@@ -49,7 +50,13 @@ function decrypt(packed) {
   }
 }
 
-export function parseChatIds(value) {
+export function clampQty(value, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(10000000, Math.max(0, Math.trunc(n)));
+}
+
+function parseChatIds(value) {
   const raw = Array.isArray(value) ? value.join('\n') : String(value || '');
   const ids = [];
   for (const part of raw.split(/[\s,;]+/)) {
@@ -85,7 +92,11 @@ export function publicTelegram(row = loadRow()) {
     notifyEnabled: row.notifyEnabled !== false,
     transport,
     chatIds: parseChatIds(row.chatIds),
-    threshold: Math.min(10000000, Math.max(0, Number(row.threshold) || DEFAULTS.threshold)),
+    threshold: clampQty(row.threshold, DEFAULTS.threshold),
+    midThreshold: clampQty(
+      row.midThreshold == null ? row.threshold : row.midThreshold,
+      DEFAULTS.midThreshold,
+    ),
     apps: { barcode: row.apps?.barcode !== false },
     tokenSet: Boolean(decrypt(row.token)),
     webhookSecretSet: Boolean(decrypt(row.webhookSecret)),
@@ -108,8 +119,11 @@ export function saveTelegramSettings(patch = {}) {
     transport: patch.transport === 'webhook' ? 'webhook' : patch.transport === 'poll' ? 'poll' : (row.transport === 'webhook' ? 'webhook' : 'poll'),
     chatIds: patch.chatIds != null ? parseChatIds(patch.chatIds) : parseChatIds(row.chatIds),
     threshold: patch.threshold != null
-      ? Math.min(10000000, Math.max(0, Number(patch.threshold) || 0))
-      : Math.min(10000000, Math.max(0, Number(row.threshold) || DEFAULTS.threshold)),
+      ? clampQty(patch.threshold, 0)
+      : clampQty(row.threshold, DEFAULTS.threshold),
+    midThreshold: patch.midThreshold != null
+      ? clampQty(patch.midThreshold, 0)
+      : clampQty(row.midThreshold == null ? row.threshold : row.midThreshold, DEFAULTS.midThreshold),
     apps: {
       barcode: patch.apps?.barcode != null ? Boolean(patch.apps.barcode) : row.apps?.barcode !== false,
     },

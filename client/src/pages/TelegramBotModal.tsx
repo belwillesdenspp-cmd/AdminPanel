@@ -7,6 +7,7 @@ export type TelegramSettings = {
   transport: 'poll' | 'webhook';
   chatIds: string[];
   threshold: number;
+  midThreshold: number;
   apps: { barcode: boolean };
   tokenSet: boolean;
   webhookSecretSet: boolean;
@@ -18,6 +19,7 @@ export function TelegramBotModal({ onClose }: { onClose: () => void }) {
   const [webhookSecret, setWebhookSecret] = useState('');
   const [chats, setChats] = useState('');
   const [thresholdText, setThresholdText] = useState('');
+  const [midThresholdText, setMidThresholdText] = useState('');
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [busy, setBusy] = useState(false);
@@ -27,6 +29,7 @@ export function TelegramBotModal({ onClose }: { onClose: () => void }) {
       setForm(row);
       setChats(row.chatIds.join('\n'));
       setThresholdText(String(row.threshold));
+      setMidThresholdText(String(row.midThreshold ?? row.threshold));
     }).catch((err) => {
       setError(err instanceof Error ? err.message : 'Не удалось загрузить');
     });
@@ -40,8 +43,13 @@ export function TelegramBotModal({ onClose }: { onClose: () => void }) {
     e.preventDefault();
     if (!form) return;
     const threshold = Number(thresholdText);
+    const midThreshold = Number(midThresholdText);
     if (!/^\d+$/.test(thresholdText) || !Number.isFinite(threshold)) {
-      setError('Укажите порог целым числом');
+      setError('Укажите минимальный порог целым числом');
+      return;
+    }
+    if (!/^\d+$/.test(midThresholdText) || !Number.isFinite(midThreshold)) {
+      setError('Укажите средний порог целым числом');
       return;
     }
     setBusy(true);
@@ -54,12 +62,14 @@ export function TelegramBotModal({ onClose }: { onClose: () => void }) {
         token,
         webhookSecret,
         threshold,
+        midThreshold,
       });
       setForm(saved);
       setToken('');
       setWebhookSecret('');
       setChats(saved.chatIds.join('\n'));
       setThresholdText(String(saved.threshold));
+      setMidThresholdText(String(saved.midThreshold));
       setInfo('Сохранено');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось сохранить');
@@ -141,7 +151,7 @@ export function TelegramBotModal({ onClose }: { onClose: () => void }) {
               <textarea value={chats} onChange={(e) => setChats(e.target.value)} />
             </label>
             <label>
-              Порог остатка
+              Минимальный порог
               <input
                 type="text"
                 inputMode="numeric"
@@ -150,6 +160,17 @@ export function TelegramBotModal({ onClose }: { onClose: () => void }) {
                 onChange={(e) => setThresholdText(e.target.value.replace(/\D/g, ''))}
               />
             </label>
+            <label>
+              Средний порог
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                value={midThresholdText}
+                onChange={(e) => setMidThresholdText(e.target.value.replace(/\D/g, ''))}
+              />
+            </label>
+            <p className="muted">Ниже минимального — красный кружок, ниже среднего — оранжевый. По каждому порогу одно сообщение, пока остаток снова не станет выше.</p>
             <label>
               Как принимать команды
               <select
