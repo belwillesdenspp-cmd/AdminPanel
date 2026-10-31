@@ -157,7 +157,7 @@ AdminPanel/
 
 ### Учёт ТМЦ — `../Учет ТМЦ` :3001 `/apps/tmc`
 
-Категории: остаток = число единиц `in_stock`, порог `threshold`, «в пути» `in_transit`. Выдача, списание, ТТН, журнал. Вёрстка на всю ширину iframe (`Layout` без `max-w-6xl`); модалки и таблицы не дают горизонтальный скролл страницы.
+Категории: остаток = число единиц `in_stock`, порог `threshold`, «в пути» `in_transit`. Выдача, списание, ТТН, журнал. Вёрстка на всю ширину iframe (`Layout` без `max-w-6xl`); модалки и таблицы не дают горизонтальный скролл страницы. Цвета из CSS-переменных, ключ `adminpanel.theme` (`light`|`dark`, иначе `prefers-color-scheme`). Карточки категорий — сетка `tmc-card` без горизонтального скролла. Кнопки и фон следуют теме оболочки.
 
 На карточках страницы «Категории» (вид «Сетка», `client/src/pages/HomePage.jsx`) под остатком и порогом чип «В пути: N» с иконкой грузовика (`Icon` из `AutoOrderShared.jsx`). Число — `categories.in_transit` из `GET /categories` (то же поле, что disabled-поле в `EditCategoryModal.jsx`); отдельного запроса и N+1 нет. Ноль показывается как `0`. Вид «Список» не менялся.
 
@@ -198,7 +198,7 @@ XenApp; logoff; сообщение; VNC (WS); SSH-консоль на IP кли�
 
 Поиск журнала: общий запрос (подстрока без регистра и «ё»; слова по отдельности; инв./серийный без дефисов и пробелов; похожие слова 1–2 опечатки) **и** фильтры в шапке каждого столбца. Несколько фильтров складываются через И (например откуда + дата). Клик по названию столбца сортирует по возрастанию / убыванию (хранится в `localStorage` `equipment.sort`). Сортировка и фильтры на сервере, вместе с пагинацией.
 
-SQLite `server/data/equipment.db`, вложения `server/uploads/`. Сборка: `BASE_PATH=/apps/equipment`. Файлы: `server/src/db.js`, `routes.js`, `search.js`, `client/src/App.jsx`. Форма перемещения и предпросмотр документов вписываются в ширину iframe (сетки `minmax(0, 1fr)`, без `100vw`).
+SQLite `server/data/equipment.db`, вложения `server/uploads/`. Сборка: `BASE_PATH=/apps/equipment`. Файлы: `server/src/db.js`, `routes.js`, `search.js`, `client/src/App.jsx`. Форма перемещения и предпросмотр документов вписываются в ширину iframe (сетки `minmax(0, 1fr)`, без `100vw`). Столбцы журнала держатся в ширине окна (`.journal-table`, `table-layout: fixed`), без горизонтальной прокрутки. Текст переносится по словам, длинные слова — с переносами `hyphens` при `lang=ru`.
 
 ### GLPI — `../GLPI` :3005 `/apps/glpi`
 
@@ -378,7 +378,7 @@ SQLite `server/data/equipment.db`, вложения `server/uploads/`. Сбор�
 ## Состояние и паттерны
 
 - React Context `AuthProvider`: `user`, `apps`, `loading`, `login/logout/refresh`.
-- localStorage: `adminpanel.sidebarCollapsed`; у Citrix — свои колонки/сорт.
+- localStorage: `adminpanel.sidebarCollapsed`; `adminpanel.theme` (`light`|`dark`, иначе системная). Тумблер 46×24 внизу сайдбара (`.theme-toggle`). Оболочка: `:root` светлая, `html[data-theme=dark]` тёмная. ТМЦ, Торцы, База знаний, Citrix, GLPI, Авторизации ПК и Перемещение читают тот же ключ (`html[data-theme=light]` поверх их тёмного `:root`). Светлая палитра: фон `#e7f0eb`, панели `#f7faf8`, текст `#132028`, приглушённый `#3d5560`, акцент `#0f7a6b`, ссылки `#0c6458`. У Торцов, Авторизаций ПК и Перемещения поля и вторичные кнопки идут через `--field-bg` / `--field-line` / `--btn-secondary` (светлая: белое поле, тёмный текст, видимая рамка; тёмная прежняя). Сайдбар Торцов — `--sidebar-bg`. В GLPI строки ключей ИИ и карточки журнала — `var(--field-bg)`. В Перемещении блок строки оборудования — `var(--panel-2)`, вторичная кнопка в светлой теме белая с рамкой `--field-line`. Тёмная у каждого приложения своя прежняя. Скроллбар: `--scroll-thumb`. У Citrix — свои колонки/сорт.
 - Сессия только cookie. Значки шлюза: `data/app-icons/`. Дети — свои БД/settings/poller.
 - Роутинг оболочки: RR v6, layout + `Outlet`. Встраивание: `/app/:appId` → iframe `app.publicPath` (**один** iframe, предыдущее приложение размонтируется). Фоновая работа GLPI/Торцов — на серверах детей + оверлеи `ShellLayout`, не hidden iframe.
 - Sync `apps.json`: INSERT нового id; UPDATE только техники; DELETE id, которых нет в json. Пустой `icon` после синка = `id`. Первая пустая БД: пользователь `ADMIN_USERNAME`/`ADMIN_PASSWORD` (иначе `admin`/`admin`).

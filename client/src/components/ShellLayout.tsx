@@ -6,6 +6,7 @@ import { useAuth } from '../auth';
 import type { AppInfo, NotifyPrefs } from '../types';
 
 const SIDEBAR_KEY = 'adminpanel.sidebarCollapsed';
+const THEME_KEY = 'adminpanel.theme';
 const DEFAULT_NOTIFY: NotifyPrefs = { position: 'top-center', opacity: 0.92, hideSec: 20 };
 let notifyCache: NotifyPrefs | null = null;
 
@@ -316,6 +317,9 @@ export function ShellLayout() {
   const location = useLocation();
   const extrasActive = location.pathname.startsWith('/extras');
   const [collapsed, setCollapsed] = useState(readCollapsed);
+  const [theme, setTheme] = useState<'light' | 'dark'>(() =>
+    document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light',
+  );
   const [narrow, setNarrow] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 1024px)').matches : false,
   );
@@ -667,6 +671,33 @@ export function ShellLayout() {
               />
             </svg>
             {!compact && <span>Выход</span>}
+          </button>
+          <button
+            type="button"
+            className={`theme-toggle${theme === 'dark' ? ' is-dark' : ''}`}
+            title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+            aria-label={theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'}
+            onClick={() => {
+              const next = theme === 'dark' ? 'light' : 'dark';
+              document.documentElement.dataset.theme = next;
+              try {
+                localStorage.setItem(THEME_KEY, next);
+              } catch {
+                /* ignore */
+              }
+              setTheme(next);
+            }}
+          >
+            <svg className="theme-toggle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <circle cx="12" cy="12" r="3.5" stroke="currentColor" strokeWidth="1.75" />
+              <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+            </svg>
+            <span className="theme-toggle-track" aria-hidden>
+              <span className="theme-toggle-thumb" />
+            </span>
+            <svg className="theme-toggle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M16 13.5A6.5 6.5 0 0 1 9.2 5 6.5 6.5 0 1 0 16 18.2 6.4 6.4 0 0 0 16 13.5Z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round" />
+            </svg>
           </button>
         </div>
       </aside>

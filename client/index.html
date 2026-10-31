@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AdminPanel — Сектор ТП</title>
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('adminpanel.theme');
+          var theme = saved === 'dark' || saved === 'light'
+            ? saved
+            : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          document.documentElement.dataset.theme = theme;
+        } catch (e) {}
+      })();
+    </script>
     <link id="ap-favicon" rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="/api/brand/manifest.webmanifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
