@@ -190,7 +190,7 @@ AdminPanel/
 
 ### Сессии Citrix — `../CitrixSessions` :3004 `/apps/citrix`
 
-XenApp; logoff; сообщение; VNC (WS); UNC-папка пользователя. **Не** открывать папку через `explorer.exe` на сервере — клиент шлёт `adminpanel-folder:` родителю. Протокол: `scripts/install-folder-opener.ps1`. Сборка: `BASE_PATH=/apps/citrix`. Папка: `CitrixSessions/server/src/userFolder.js`. Вёрстка на всю ширину iframe; VNC-окно и таблица вписываются в iframe без `100vw`.
+XenApp; logoff; сообщение; VNC (WS); SSH-консоль на IP клиента. Порт SSH — `sshPort` в настройках (по умолчанию 22, `CITRIX_SSH_PORT`). Логин и пароль отдельно на каждый IP в `server/data/ssh-credentials.json`, пароль AES-256-GCM (ключ `CITRIX_CREDENTIALS_KEY` или `JWT_SECRET`); клиенту пароль не отдаётся. Кнопка в «Действиях» открывает окно: если пароль сохранён, поле можно оставить пустым. Успешный вход с «Запомнить» пишет учётку и открывает веб-консоль (`xterm` + `ssh2`, WS `/api/remote/ssh`). Окно SSH тянется за правый нижний угол, терминал подстраивает размер. Кнопка «Внешний VNC», путь к стороннему клиенту и протокол `adminpanel-vnc:` убраны. Встроенный VNC в браузере (иконка в «Действиях», порт и пароль в настройках, WS `/api/remote/vnc`) остаётся. Сборка: `BASE_PATH=/apps/citrix`. Вёрстка на всю ширину iframe; VNC/SSH-окно и таблица вписываются в iframe без `100vw`.
 
 ### Перемещение оборудования — `../EquipmentMove` :3006 `/apps/equipment`
 
@@ -432,7 +432,7 @@ SQLite `server/data/equipment.db`, вложения `server/uploads/`. Сбор�
 | Сканер IP | `server/src/tools/ip.js` |
 | Остаток ШК | `server/src/barcodeMonitor.js`, `client/src/pages/BarcodeMonitorPage.tsx`, `ui_prefs` `barcode_monitor` |
 | Telegram-бот | `server/src/telegram/`, `TelegramBotModal.tsx`, `GET/PUT /api/apps/telegram` |
-| Папка Citrix | `../CitrixSessions/server/src/userFolder.js`, `scripts/install-folder-opener.ps1` |
+| SSH Citrix | `../CitrixSessions/server/src/sshWs.js`, `sshCredentials.js`, `client/src/SshModal.jsx` |
 | Дашборд GLPI | `../GLPI/server/src/dashboard.js`, `summary.js`, `summary-llm.js`; режим `dashboardRefreshMode` |
 | Inbox / назначение / скрытый чат | `../GLPI/server/src/inbox.js` `toGlpiHtml`, `glpi.js` `knowbaseUrl`; `client/src/Inbox.jsx`; preview `POST /inbox/:id/preview` (без автоназначения), apply `includeSolutionNote !== false`; лок `ticket-lock.js`, проверка `assign-guard.js` |
 | Страница «В работе» | `../GLPI/server/src/working.js`, `assign-guard.js` `inspectTicketForUpdate`; `client/src/Working.jsx`; `GET /working`, `GET /working/export`, `POST /working/:id/update` (снимок `expected`); reanalyze без автоприменения |
